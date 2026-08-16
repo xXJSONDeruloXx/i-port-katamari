@@ -2,8 +2,8 @@
 <gameList>
 	<game>
 		<path>./Katamari.sh</path>
-		<name>Katamari Damacy</name>
-		<desc>The original Katamari Android game running its ARM native engine directly through a bionic/JNI compatibility loader. Supply your own APK; the first launch imports it automatically.</desc>
+		<name>I Love Katamari</name>
+		<desc>I Love Katamari running its original ARM native engine directly through a bionic/JNI compatibility loader. Supply your own APK; the first launch imports it automatically.</desc>
 		<developer>Namco Bandai Games</developer>
 		<publisher>Namco Bandai Games</publisher>
 		<genre>Action / Puzzle</genre>

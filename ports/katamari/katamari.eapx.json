@@ -3,7 +3,7 @@
   "id": "katamari-android-1.0.0",
   "version": "1",
   "requires_eapx": ">=0.4.4",
-  "title": "Katamari Damacy",
+  "title": "I Love Katamari",
   "abi_order": [
     "armeabi"
   ],
@@ -16,7 +16,7 @@
   "extract": [
     {
       "id": "native-library",
-      "description": "Katamari Android ARM native library",
+      "description": "I Love Katamari Android ARM native library",
       "destination": "lib/armeabi/libkatamari.so",
       "source": {
         "kind": "entry",
@@ -36,7 +36,7 @@
     },
     {
       "id": "assets",
-      "description": "Katamari game data from the APK assets directory",
+      "description": "I Love Katamari game data from the APK assets directory",
       "destination": "assets",
       "source": {
         "kind": "entries",

@@ -1,6 +1,7 @@
 # Third-party code and licensing
 
-This Katamari PortMaster host is released under **GPL-3.0**; see `LICENSE`.
+This I Love Katamari PortMaster host is released under **GPL-3.0**; see
+`LICENSE`.
 The repository contains compatibility code derived from the projects below.
 Their notices remain applicable to the corresponding source files.
 
@@ -17,11 +18,11 @@ Their notices remain applicable to the corresponding source files.
 The ARM shared libraries under `libs.armhf/` are copied from Debian armhf
 packages by `tools/collect_libs.sh`. The release ZIP includes the exact Debian
 copyright file for each bundled SONAME under `licenses/libraries/`, including
-the `libmpg123` MP3 decoder used by Katamari's audio bridge.
+the `libmpg123` MP3 decoder used by I Love Katamari's audio bridge.
 
 ## Game data
 
-Katamari Damacy and its Android native library are © Namco Bandai Games. No APK,
+I Love Katamari and its Android native library are © Namco Bandai Games. No APK,
 native game library, music, texture, or other proprietary game data is shipped
 by this repository. The PortMaster launcher asks the user to provide a donor
 they are entitled to use and extracts it locally on first launch.

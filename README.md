@@ -1,6 +1,6 @@
 # i-port-katamari
 
-Katamari Damacy running its original ARMv5 Android engine on Linux/ARM
+I Love Katamari running its original ARMv5 Android engine on Linux/ARM
 handhelds through a native ELF/JNI/GLES host. The repository contains the
 loader, SDL input/audio bridge, APK data importer, emulator tools, and
 PortMaster packaging. It does not contain the APK or proprietary game data.
@@ -18,8 +18,9 @@ The game-data-free package is written to `build/katamari-portmaster.zip`.
 
 ## Supported game version
 
-This port is intended for the **I Love Katamari (English)** Android version.
-The game file must be named `MMkatamari-englishhack.apk`.
+This port is intended for **I Love Katamari (English)**, the Android/iOS game.
+It uses the Android version, whose file must be named
+`MMkatamari-englishhack.apk`.
 
 ## Install
 
@@ -28,8 +29,8 @@ The game file must be named `MMkatamari-englishhack.apk`.
    directory.
 3. Copy `MMkatamari-englishhack.apk` into `ports/katamari/`.
 4. Copy `Katamari.sh` into `ROMS/PORTS/`.
-5. Launch Katamari from the frontend. The first launch validates and imports
-   the APK data.
+5. Launch I Love Katamari from the frontend. The first launch validates and
+   imports the APK data.
 
 Releases are at
 <https://github.com/xXJSONDeruloXx/i-port-katamari/releases>.

@@ -1,11 +1,12 @@
-# Katamari Damacy — native PortMaster port
+# I Love Katamari — native PortMaster port
 
 This port runs the original ARMv5 native Katamari game from the Android APK
 directly on a Linux/ARM handheld. It does not include Android, an emulator, or
 the proprietary game data.
 
-Bring your own copy of the supported **I Love Katamari (English)** Android
-build. The APK filename must be `MMkatamari-englishhack.apk`:
+Bring your own copy of the supported **I Love Katamari (English)** Android/iOS
+game. This port uses its Android build, whose APK filename must be
+`MMkatamari-englishhack.apk`:
 
 ```text
 package: com.namcobandaigames.katamari
@@ -20,7 +21,7 @@ native SHA-256: 86bbb9a6446c7264c6d333f91c2d5ea9cab62dc551eb581862e188460d17cef7
    directory.
 3. Copy `MMkatamari-englishhack.apk` into `ports/katamari/`.
 4. Copy `Katamari.sh` into `ROMS/PORTS/`.
-5. Launch **Katamari Damacy**. The first launch validates the native library
+5. Launch **I Love Katamari**. The first launch validates the native library
    and assets, then imports the APK data atomically.
 
 Keep at least 200 MiB free while it stages the data.
@@ -59,7 +60,7 @@ space for the transactional first import.
 
 ## Credits and licence
 
-Katamari Damacy is © Namco Bandai Games. The original game library is not
+I Love Katamari is © Namco Bandai Games. The original game library is not
 distributed by this project. The host and compatibility code are GPL-3.0.
 
 The ARM ELF/JNI/libc loader is based on gmloader-next and Vita so-loader work.
