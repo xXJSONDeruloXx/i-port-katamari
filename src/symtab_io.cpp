@@ -1,6 +1,5 @@
 /*
  * Path-translating wrappers around the libc entry points the game opens files
- * with.
  *
  * ---------------------------------------------------------------------------
  * What was observed
@@ -93,7 +92,8 @@ void io_set_game_dir(const char *dir)
 const char *io_game_dir(void) { return g_game_dir; }
 
 static const char kScheme[]  = "appbundle:/";
-static const char kAndroid[] = "Android/data/com.ea.deadspace/files/";
+static const char kAndroid[] =
+    "Android/data/com.namcobandaigames.katamari/files/";
 
 const char *fix_path(const char *orig, char *buf, size_t bufsz)
 {
@@ -109,7 +109,6 @@ const char *fix_path(const char *orig, char *buf, size_t bufsz)
         return buf;
     }
 
-    /* Rules 2 and 3 both operate on the same working copy. */
     char work[PATH_MAX];
     snprintf(work, sizeof(work), "%s", orig);
     bool changed = false;
@@ -121,16 +120,6 @@ const char *fix_path(const char *orig, char *buf, size_t bufsz)
         changed = true;
     }
 
-    /*
-     * Rule 3, expressed against the game directory rather than as a literal.
-     *
-     * The reference spells it "deadspace/published" -> "deadspace/assets/
-     * published" because its data root is a compile-time constant ending in
-     * "deadspace". Ours is argv[1], handed to the engine by
-     * com/ea/blast/GetAppDataDirectoryDelegate, so the same rewrite has to key
-     * off that: the engine believes published/ hangs off the root, and in the
-     * extracted tree it hangs off assets/.
-     */
     size_t root_len = strlen(g_game_dir);
     if (strncmp(work, g_game_dir, root_len) == 0 &&
         strncmp(work + root_len, "/published", 10) == 0) {
@@ -140,23 +129,15 @@ const char *fix_path(const char *orig, char *buf, size_t bufsz)
         changed = true;
     }
 
-    /* The literal form as well, for any path the engine built before it had a
-     * root from us - it still names the vendor directory. */
-    char *published = strstr(work, "deadspace/published");
-    if (published) {
-        char tail[PATH_MAX];
-        snprintf(tail, sizeof(tail), "%s", published + strlen("deadspace/"));
-        snprintf(published, sizeof(work) - (size_t)(published - work),
-                 "deadspace/assets/%s", tail);
-        changed = true;
+    if (strncmp(work, "assets/", 7) == 0 ||
+        strncmp(work, "res/raw/", 8) == 0) {
+        snprintf(buf, bufsz, "%s/%s", g_game_dir, work);
+        return buf;
     }
 
-    /* The divergence described above: re-root anything still pointing at an
-     * asset tree we are not mounted at. */
-    char *assets = strstr(work, "deadspace/assets/");
-    if (assets) {
-        snprintf(buf, bufsz, "%s/%s", g_game_dir,
-                 assets + strlen("deadspace/"));
+    const char *assets = strstr(work, "/assets/");
+    if (assets && strncmp(work, g_game_dir, root_len) != 0) {
+        snprintf(buf, bufsz, "%s%s", g_game_dir, assets);
         return buf;
     }
 
@@ -187,11 +168,10 @@ static void trace_path(const char *what, const char *orig, const char *fixed, in
  * Count successful content-file opens, not probes, directories, saves or
  * configuration. The path has already passed through fix_path(), so the
  * extracted asset tree is the stable boundary regardless of which spelling
- * the engine used (appbundle:, Android/data/... or its VFS mount).
  */
 static void count_asset_open(const char *fixed, bool succeeded)
 {
-    if (succeeded && fixed && strstr(fixed, "/assets/published/"))
+    if (succeeded && fixed && strstr(fixed, "/assets/"))
         g_assets_opened.fetch_add(1, std::memory_order_relaxed);
 }
 
