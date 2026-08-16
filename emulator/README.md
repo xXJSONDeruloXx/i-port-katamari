@@ -66,6 +66,7 @@ The bridge maps controls as follows:
 - D-pad: move the software touch pointer
 - A/X: touch at the pointer
 - B: Android back
+- Select: native Android select key
 - Left/right sticks: virtual touch sticks for rolling
 - L1/R1 and L2/R2: simulated accelerometer tilt
 - Start: show the pointer

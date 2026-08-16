@@ -93,6 +93,7 @@ host maps those calls as follows:
 - D-pad: move the software pointer
 - A/X: tap at the pointer
 - B: Android back
+- Select: native Android select key
 - Left/right sticks: virtual touch sticks
 - L1/R1: simulated tilt
 - Start: restore the pointer

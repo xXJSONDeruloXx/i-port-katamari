@@ -16,6 +16,9 @@ enum {
     ACTION_UP = 1,
     ACTION_MOVE = 2,
     ACTION_CANCEL = 3,
+    KEYCODE_BACK = 4,
+    KEYCODE_MENU = 82,
+    KEYCODE_BUTTON_SELECT = 109,
 };
 
 static JNIEnv *g_env = NULL;
@@ -296,10 +299,16 @@ bool katamari_input_event(const SDL_Event *event)
             tap_cursor();
             break;
         case SDL_CONTROLLER_BUTTON_B:
-            send_key(4, 0);
-            send_key(4, 1);
+            send_key(KEYCODE_BACK, ACTION_DOWN);
+            send_key(KEYCODE_BACK, ACTION_UP);
+            break;
+        case SDL_CONTROLLER_BUTTON_BACK:
+            send_key(KEYCODE_BUTTON_SELECT, ACTION_DOWN);
+            send_key(KEYCODE_BUTTON_SELECT, ACTION_UP);
             break;
         case SDL_CONTROLLER_BUTTON_START:
+            send_key(KEYCODE_MENU, ACTION_DOWN);
+            send_key(KEYCODE_MENU, ACTION_UP);
             show_cursor();
             break;
         case SDL_CONTROLLER_BUTTON_DPAD_UP:
@@ -478,13 +487,25 @@ bool katamari_input_inject_control(const char *name, bool down)
         return true;
     }
     if (!strcmp(name, "b")) {
-        if (down)
-            send_key(4, ACTION_DOWN);
+        if (down) {
+            send_key(KEYCODE_BACK, ACTION_DOWN);
+            send_key(KEYCODE_BACK, ACTION_UP);
+        }
         return true;
     }
     if (!strcmp(name, "start")) {
-        if (down)
+        if (down) {
+            send_key(KEYCODE_MENU, ACTION_DOWN);
+            send_key(KEYCODE_MENU, ACTION_UP);
             show_cursor();
+        }
+        return true;
+    }
+    if (!strcmp(name, "select")) {
+        if (down) {
+            send_key(KEYCODE_BUTTON_SELECT, ACTION_DOWN);
+            send_key(KEYCODE_BUTTON_SELECT, ACTION_UP);
+        }
         return true;
     }
     if (!strcmp(name, "up") || !strcmp(name, "down") ||
@@ -521,8 +542,8 @@ bool katamari_input_inject_control(const char *name, bool down)
             send_accel(6.0, 0.0, 0.0);
         return true;
     }
-    if (!strcmp(name, "select") || !strcmp(name, "y") ||
-        !strcmp(name, "l3") || !strcmp(name, "r3"))
+    if (!strcmp(name, "y") || !strcmp(name, "l3") ||
+        !strcmp(name, "r3"))
         return true;
     return false;
 }
