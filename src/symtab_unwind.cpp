@@ -1,7 +1,6 @@
 /*
  * Where the C++ unwinder is supposed to find the exception tables.
  *
- * Dead Space links its own copy of libgcc's ARM unwinder, so throwing is
  * entirely the game's business - except for one hole the ABI leaves open. On
  * ARM the unwind data is not walked from a frame pointer, it is looked up in a
  * sorted table (.ARM.exidx) keyed by the return address, and libgcc does not
@@ -12,7 +11,6 @@
  * On a device bionic answers it by searching the dynamic linker's list of
  * loaded objects. Here the host's libgcc answers it instead - and its
  * implementation searches the *host* linker's list, via dl_iterate_phdr.
- * libdeadspace.so is not in that list and never can be: this loader mapped it
  * out of a zip file with mmap, so as far as glibc is concerned those pages are
  * anonymous memory belonging to nothing.
  *
@@ -22,10 +20,6 @@
  * anywhere" and calls std::terminate. Every throw in the module becomes fatal
  * even when the very next frame has a matching catch.
  *
- * That is exactly how Dead Space was dying at M4. xt::TextureLoader::loadTexture2D
- * asks xt::AndroidFileSystem::exists() whether a file is there; exists()
- * answers by constructing an xt::FileInStream inside a try/catch and reporting
- * whether the constructor threw. A perfectly ordinary "file is missing" became
  *
  *     std::terminate -> the default handler -> strb r2,[0xdeadcab1] -> abort
  *
@@ -62,7 +56,7 @@ extern std::vector<so_module *> loaded_modules;
  * so the signature stays the plain-integer one the ABI actually specifies. */
 extern "C" uintptr_t __gnu_Unwind_Find_exidx(uintptr_t pc, int *pcount);
 
-extern "C" uintptr_t deadspace_unwind_find_exidx(uintptr_t pc, int *pcount)
+extern "C" uintptr_t katamari_unwind_find_exidx(uintptr_t pc, int *pcount)
 {
     for (so_module *mod : loaded_modules) {
         if (!mod)
@@ -99,7 +93,7 @@ extern "C" uintptr_t deadspace_unwind_find_exidx(uintptr_t pc, int *pcount)
 DynLibFunction symtable_unwind[] = {
 #if defined(__arm__)
     /* Two integer arguments, so no soft-float bridge is involved. */
-    NO_THUNK("__gnu_Unwind_Find_exidx", (uintptr_t)&deadspace_unwind_find_exidx),
+    NO_THUNK("__gnu_Unwind_Find_exidx", (uintptr_t)&katamari_unwind_find_exidx),
 #endif
     { NULL, 0 },
 };

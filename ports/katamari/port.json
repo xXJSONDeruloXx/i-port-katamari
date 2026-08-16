@@ -1,0 +1,41 @@
+{
+  "version": 4,
+  "name": "katamari-portmaster.zip",
+  "items": [
+    "Katamari.sh",
+    "katamari"
+  ],
+  "items_opt": [],
+  "attr": {
+    "title": "Katamari Damacy",
+    "porter": [
+      "EapRules"
+    ],
+    "desc": "The original Katamari Android game running its ARMv5 native engine directly on Linux through a bionic/JNI compatibility loader.",
+    "desc_md": null,
+    "inst": "Supply your own Katamari Android 1.0.0 APK, ZIP, or extracted folder. Put it in ports/katamari/; the first launch extracts and validates it automatically. No game data is included.",
+    "inst_md": null,
+    "genres": [
+      "action",
+      "puzzle"
+    ],
+    "image": {},
+    "rtr": false,
+    "exp": true,
+    "runtime": null,
+    "reqs": [
+      "analog_2"
+    ],
+    "arch": [
+      "armhf"
+    ],
+    "min_glibc": "2.29",
+    "status": {
+      "source": "https://github.com/xXJSONDeruloXx/i-port-katamari",
+      "date_added": "2026-08-16"
+    },
+    "publisher": "Namco Bandai Games",
+    "developer": "Namco Bandai Games",
+    "players": "1"
+  }
+}

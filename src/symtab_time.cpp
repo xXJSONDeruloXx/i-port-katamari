@@ -2,7 +2,6 @@
  * 32-bit time_t, because the game has one and the host does not.
  *
  * Debian trixie moved armhf to 64-bit time_t. bionic's armeabi-v7a time_t
- * stayed 32-bit, and Dead Space was compiled against it. Binding the game's
  * clock_gettime straight to the host's - which is what the generated bionic
  * table does, and what works on distros that have not made the switch - hands
  * the kernel a 16-byte struct timespec to fill in where the game reserved 8:
@@ -67,10 +66,6 @@
  * of what is deliberately left unscaled are in time_scale.h; this is only where
  * it happens to live, because these are the functions it acts on.
  *
- * DEADSPACE_TEST_TIME_SCALE is this port's original, game-specific spelling of
- * the same idea, kept as an alias so the compatibility-matrix runs that use it
- * keep working. It is the one thing here that knows a game's name, and it goes
- * away once those runs move to DEADSPACE_TIME_SCALE.
  */
 
 /*
@@ -82,12 +77,8 @@
 double port_time_scale(void)
 {
     static const double scale = [] {
-        const char *value = getenv("DEADSPACE_TIME_SCALE");
-        const char *name  = "DEADSPACE_TIME_SCALE";
-        if (!value || !*value) {
-            value = getenv("DEADSPACE_TEST_TIME_SCALE");
-            name  = "DEADSPACE_TEST_TIME_SCALE";
-        }
+        const char *value = getenv("KATAMARI_TIME_SCALE");
+        const char *name  = "KATAMARI_TIME_SCALE";
         if (!value || !*value)
             return 1.0;
 
@@ -265,8 +256,6 @@ int bionic_nanosleep(const struct bionic_timespec *req, struct bionic_timespec *
 
 bionic_time_t bionic_time(bionic_time_t *out)
 {
-    /* Unscaled, unlike the old DEADSPACE_TEST_TIME_SCALE path that added the
-     * offset here: this is the clock a save file's timestamp comes from. */
     bionic_time_t now = (bionic_time_t)time(NULL);
     if (out)
         *out = now;

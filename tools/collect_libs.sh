@@ -20,11 +20,10 @@
 # device's business, not the port's.
 #
 # Run it inside the build container:
-#   docker run --rm -v "$PWD":/src -w /src deadspace-build tools/collect_libs.sh
 # or, equivalently, `make libs`.
 set -euo pipefail
 
-BIN=${1:-build/deadspace}
+BIN=${1:-build/katamari}
 OUT=${2:-build/libs.armhf}
 READELF=${READELF:-arm-linux-gnueabihf-readelf}
 

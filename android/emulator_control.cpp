@@ -37,7 +37,7 @@
 #include "trace.h"
 
 #include "emulator_control.h"
-#include "input_bridge.h"
+#include "katamari_input.h"
 
 static std::string g_control_dir;
 static std::string g_command_path;
@@ -89,7 +89,7 @@ static void write_status(long frame, const char *state,
 
 void emulator_control_init(void)
 {
-    const char *dir = getenv("DEADSPACE_CONTROL_DIR");
+    const char *dir = getenv("KATAMARI_CONTROL_DIR");
     if (!dir || !*dir)
         return;
 
@@ -103,9 +103,9 @@ void emulator_control_init(void)
     if (create)
         fclose(create);
     g_commands = fopen(g_command_path.c_str(), "r");
-    const char *auto_frames = getenv("DEADSPACE_AUTO_SCREENSHOT_FRAMES");
+    const char *auto_frames = getenv("KATAMARI_AUTO_SCREENSHOT_FRAMES");
     if (!auto_frames || !*auto_frames)
-        auto_frames = getenv("DEADSPACE_AUTO_SCREENSHOT_FRAME");
+        auto_frames = getenv("KATAMARI_AUTO_SCREENSHOT_FRAME");
     if (auto_frames && *auto_frames) {
         std::stringstream values(auto_frames);
         std::string value;
@@ -148,25 +148,25 @@ bool emulator_control_tick(long frame)
     if (!strcmp(action, "cursor")) {
         float x = 0, y = 0;
         if (sscanf(line, "%*s %f %f", &x, &y) == 2) {
-            android_input_cursor_set(x, y);
+            katamari_input_cursor_set(x, y);
             trace("emulator: cursor %.1f %.1f", (double)x, (double)y);
         }
     } else if (!strcmp(action, "click")) {
         char state[16] = {};
         if (sscanf(line, "%*s %15s", state) == 1)
-            android_input_cursor_press(!strcmp(state, "down"));
+            katamari_input_cursor_press(!strcmp(state, "down"));
     } else if (!strcmp(action, "button")) {
         char name[32] = {}, state[16] = {};
         if (sscanf(line, "%*s %31s %15s", name, state) == 2) {
             bool down = !strcmp(state, "down");
-            if (!android_input_inject_control(name, down))
+            if (!katamari_input_inject_control(name, down))
                 trace("emulator: unknown control '%s'", name);
         }
     } else if (!strcmp(action, "stick")) {
         char name[16] = {};
         float x = 0.0f, y = 0.0f;
         if (sscanf(line, "%*s %15s %f %f", name, &x, &y) == 3) {
-            if (android_input_inject_stick(name, x, y))
+            if (katamari_input_inject_stick(name, x, y))
                 trace("emulator: stick %s %.3f %.3f",
                       name, (double)x, (double)y);
             else

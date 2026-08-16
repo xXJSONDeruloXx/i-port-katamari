@@ -1,4 +1,3 @@
-# Dead Space loader.
 #
 # Always cross-compiles to arm-linux-gnueabihf: the R36S runs an aarch64
 # kernel, but the only native library the game ships is armeabi-v7a, and the
@@ -13,10 +12,10 @@ CROSS      ?= $(ARCH)-
 CXX        := $(CROSS)g++
 PKG_CONFIG ?= $(CROSS)pkg-config
 
-TARGET  := build/deadspace
+TARGET  := build/katamari
 OBJDIR  := build/obj
 
-PKGS := sdl2 zlib libzip
+PKGS := sdl2 zlib libzip libmpg123
 
 OPT  ?= -O2 -g
 WARN := -Wall -Wextra -Wno-unused-parameter -Werror=return-type

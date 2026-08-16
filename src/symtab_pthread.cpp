@@ -53,7 +53,7 @@
 /* Defined in src/main.cpp, with C++ linkage - so declared outside the
  * extern "C" block below or the two would not be the same symbol. */
 struct so_module;
-extern so_module *deadspace_module(void);
+extern so_module *katamari_module(void);
 
 extern "C" {
 
@@ -173,124 +173,11 @@ int bionic_pthread_attr_setguardsize(struct bionic_pthread_attr *attr, uint32_t 
  * for more.
  */
 /*
- * One thread in this engine has to start late, and this is where that is done.
- *
- * The symptom is the one that is hardest to act on: the run faults in a
- * *different place each time*. Two crash sites alternated across otherwise
- * identical runs - +0x30a744 on the main stack, +0x5f384 on another - and a fix
- * for one would appear to work and then stop working, because what actually
- * changed between runs was thread scheduling, not the fix.
- *
- * The Vita port hit the same thing and its patch.c hooks the entry trampoline
- * at +0x320624 to sleep before running, with the comment "a thread that causes
- * some kind of undefined behaviour and crashes in different places if not
- * delayed". That trampoline is four instructions -
- *
- *     push {r4, lr} ; ldr r3,[r0] ; mov lr,pc ; ldr pc,[r3] ; mov r0,#0
- *
- * - a C++ thread object's start routine: call virtual method zero on the
- * argument, return 0. Which means it does not need a binary hook at all. It
- * arrives here as the `entry` argument of pthread_create, so recognising it by
- * address and delaying the *creation* has the same effect with none of the
- * trampoline machinery, and stays visible in a stack trace.
- *
- * This is a workaround and it is worth being plain about that: the underlying
- * defect is a startup race inside the engine that nobody has diagnosed, on
- * either platform. Delaying makes it lose the race reliably instead of
- * sometimes. DEADSPACE_LATE_THREAD_MS exists so the next person can find out
- * how much margin there really is without rebuilding, and setting it to 0 turns
- * the workaround off to check whether it is still needed.
  */
-#define LATE_THREAD_OFFSET 0x320624
-
-static bool is_late_thread(void *(*entry)(void *))
-{
-    so_module *mod = deadspace_module();
-    if (!mod || !entry)
-        return false;
-
-    /* Which entry point, by module-relative offset. Empty means "every thread
-     * the engine starts", which is the setting to reach for when narrowing
-     * down whether a race exists at all before finding out whose it is. */
-    const char *want = getenv("DEADSPACE_LATE_THREAD_AT");
-    if (!want || !*want)
-        return (uintptr_t)entry >= mod->text_base &&
-               (uintptr_t)entry <  mod->text_base + mod->text_size;
-
-    unsigned long off = strtoul(want, NULL, 0);
-    return (uintptr_t)entry == mod->text_base + off;
-}
-
-static void delay_late_thread(void)
-{
-    const char *env = getenv("DEADSPACE_LATE_THREAD_MS");
-    /*
-     * On by default, and the sample size is the whole story here.
-     *
-     * This was added when the run faulted in two different places on identical
-     * runs - +0x30a744 and +0x5f384 - and delaying every engine thread made it
-     * land in one place, which is what made the fault chaseable at all.
-     *
-     * It was then removed, on the evidence of two runs at 0 ms and two at
-     * 5000 ms that all faulted identically. That was wrong: two runs cannot
-     * distinguish "deterministic" from "usually lands here". Six runs each say:
-     *
-     *     no delay      5 x +0x30a744, 1 x +0x5f384
-     *     1500 ms       6 x +0x30a744
-     *
-     * The race is still there. It is just rare enough that a small sample looks
-     * clean, which is the trap this variable exists to survive - and the reason
-     * the removal commit's claim of a byte-identical fault should be read as
-     * what it was, a conclusion drawn from four data points.
-     *
-     * Still a workaround, and still not shippable at this cost: 1500 ms times
-     * six threads is nine seconds of startup. What it buys is a reproducible
-     * fault, which is worth more right now than a fast one. Narrowing it to the
-     * single thread that matters is what DEADSPACE_LATE_THREAD_AT is for, and 0
-     * turns it off to re-measure.
-     */
-    int ms = env ? atoi(env) : 1500;
-    if (ms <= 0)
-        return;
-
-    /* Deliberately does not name an offset. It used to print
-     * LATE_THREAD_OFFSET, which is the Vita port's hook target and not what is
-     * being delayed here at all - that address never arrives as a pthread
-     * entry. A log line that names the wrong thing is worse than one that names
-     * nothing: the pthread_create trace above already prints the real entry
-     * point, immediately before this. */
-    trace("  ^ delayed %d ms before starting (engine startup race; "
-          "DEADSPACE_LATE_THREAD_MS=0 disables)", ms);
-
-    struct timespec ts = { ms / 1000, (long)(ms % 1000) * 1000000L };
-    nanosleep(&ts, NULL);
-}
-
-/*
- * Name the thread that was just created, by the same id the crash handler
- * prints.
- *
- * The entry-point trace above says which function a thread runs; it does not
- * say which of the six running threads faulted. Matching a crash to its entry
- * point is the difference between "a worker thread dies" and "the thread that
- * runs +0x24c914 dies", and only one of those can be acted on.
- *
- * The tid is read from the child's own descriptor rather than passed in,
- * because there is no portable way to ask for it before the thread starts.
- * pthread_getattr_np would give the stack, not the id; this uses the pthread_t
- * as the key instead, which the crash handler cannot see - so both are printed
- * and the stack bounds tie them together.
- */
-static void report_thread(int rc, pthread_t *thread, void *(*entry)(void *))
+static void report_thread(int rc, pthread_t *thread)
 {
     if (rc != 0 || !thread)
         return;
-
-    so_module *mod = deadspace_module();
-    unsigned   off = 0;
-    if (mod && (uintptr_t)entry >= mod->text_base &&
-        (uintptr_t)entry <  mod->text_base + mod->text_size)
-        off = (unsigned)((uintptr_t)entry - mod->text_base);
 
     void  *stack = NULL;
     size_t size  = 0;
@@ -302,19 +189,14 @@ static void report_thread(int rc, pthread_t *thread, void *(*entry)(void *))
 
     trace("  ^ pthread_t=%p stack=%p..%p",
           (void *)*thread, stack, (char *)stack + size);
-    (void)off;
 }
 
 
 int bionic_pthread_create(pthread_t *thread, const struct bionic_pthread_attr *attr,
                           void *(*entry)(void *), void *arg)
 {
-    /* Name every thread the engine starts, module-relative. Guessing which
-     * entry point matters is what wasted the first attempt at the delay below:
-     * the trampoline the Vita port hooks never arrives here, and one line per
-     * creation says so in a single run instead of a session of disassembly. */
     {
-        so_module *mod = deadspace_module();
+        so_module *mod = katamari_module();
         if (mod && (uintptr_t)entry >= mod->text_base &&
             (uintptr_t)entry <  mod->text_base + mod->text_size)
             trace("pthread_create: entry at +0x%08x, arg=%p",
@@ -323,12 +205,9 @@ int bionic_pthread_create(pthread_t *thread, const struct bionic_pthread_attr *a
             trace("pthread_create: entry at %p (outside the module)", (void *)entry);
     }
 
-    if (is_late_thread(entry))
-        delay_late_thread();
-
     if (!attr) {
         int rc0 = pthread_create(thread, NULL, entry, arg);
-        report_thread(rc0, thread, entry);
+        report_thread(rc0, thread);
         return rc0;
     }
 
@@ -346,7 +225,7 @@ int bionic_pthread_create(pthread_t *thread, const struct bionic_pthread_attr *a
 
     int rc = pthread_create(thread, &host, entry, arg);
     pthread_attr_destroy(&host);
-    report_thread(rc, thread, entry);
+    report_thread(rc, thread);
     return rc;
 }
 
@@ -368,15 +247,10 @@ int bionic_pthread_create(pthread_t *thread, const struct bionic_pthread_attr *a
  * holding 0x4000, the bridge reads that as an already-allocated pointer, and
  * glibc dereferences address 0x4000.
  *
- * That is where Dead Space died, before onCreate and before anything was logged:
  * the C++ runtime it links statically guards its function-local statics with
  *
  *     static pthread_mutex_t guard = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
  *
- * (libdeadspace.so ships it at .data+0x1210c0, word = 0x4000), and the engine's
- * xt::ReflectType registration hits the first such static from an .init_array
- * constructor - so the fault happened during so_load_module, with the log
- * still showing nothing but "Linking libdeadspace.so...".
  *
  * A sibling port never tripped this: its build of the same engine has no
  * statically initialised recursive mutex, so every word the bridge ever saw
@@ -505,7 +379,6 @@ int bionic_pthread_mutex_init(BIONIC_pthread_mutex_t *m, pthread_mutexattr_t **a
      * it assumes the word means something on entry, and on a freshly
      * malloc'd mutex it does not.
      *
-     * Dead Space allocates its mutexes with the engine's own allocator, which
      * is plain memalign - no zeroing:
      *
      *     xt::FileWatcher::FileWatcher+0x7c   mov  r0, #4
@@ -532,8 +405,7 @@ int bionic_pthread_mutex_init(BIONIC_pthread_mutex_t *m, pthread_mutexattr_t **a
 
     /* The double indirection is gmloader-next's convention, not ours: its
      * pthread_mutexattr_init bridge stores a host attribute object in the
-     * word the game reserved. libdeadspace.so imports no pthread_mutexattr_*
-     * function at all and only ever passes NULL here. */
+*/
     int rc = pthread_mutex_init(host, attr ? *attr : NULL);
     if (rc != 0) {
         free(host);

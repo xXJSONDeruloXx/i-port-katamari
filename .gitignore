@@ -2,7 +2,7 @@
 *.apk
 build/
 # The game's writable storage (savegames, caches). Created at runtime; the
-# port's .sh points DEADSPACE_DATA_DIR at the PortMaster data directory.
+# port's launcher keeps saves in the PortMaster data directory.
 gamedata/
 harness/results/
 harness/control/*.armhf

@@ -19,7 +19,7 @@ static constexpr int kReportLimit = 128;
 bool gl_diag_enabled(void)
 {
     static int enabled = [] {
-        const char *value = getenv("DEADSPACE_GL_DIAG");
+        const char *value = getenv("KATAMARI_GL_DIAG");
         return value && *value && strcmp(value, "0") != 0;
     }();
     return enabled != 0;

@@ -12,7 +12,6 @@
 # at build time, before the zip is ever shipped.
 #
 # Run inside the build container (needs the cross readelf), e.g. from `make libs`:
-#   tools/check_glibc_floor.sh build/deadspace build/libs.armhf
 #
 # GLIBC_FLOOR overrides the ceiling (default 2.31 = Debian bullseye).
 #
