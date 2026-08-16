@@ -52,10 +52,8 @@ static const char *kNativeLibDir = "lib/armeabi";
 static const int kWidth = 640;
 static const int kHeight = 480;
 
-/* Kept under the historical name because the loader's pthread and JNI helper
- * tables use it to find the currently mapped module. */
 static so_module *g_module = NULL;
-so_module *deadspace_module(void) { return g_module; }
+so_module *katamari_module(void) { return g_module; }
 
 static int report_unresolved_symbols(so_module *mod)
 {
@@ -80,8 +78,7 @@ static int report_unresolved_symbols(so_module *mod)
     fflush(stderr);
     return missing;
 }
-/* The Katamari image needs no Dead Space text patches: its ARMv5 soft-float
- * code is loaded exactly as shipped. */
+/* Katamari's ARMv5 soft-float code is loaded exactly as shipped. */
 extern "C" int so_after_relocate(so_module *mod)
 {
     g_module = mod;

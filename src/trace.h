@@ -8,8 +8,8 @@
  *
  * Enabled by LOADER_TRACE=1 so a released port stays quiet.
  */
-#ifndef DEADSPACE_TRACE_H
-#define DEADSPACE_TRACE_H
+#ifndef KATAMARI_TRACE_H
+#define KATAMARI_TRACE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,4 +25,4 @@ void fatal(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 }
 #endif
 
-#endif /* DEADSPACE_TRACE_H */
+#endif /* KATAMARI_TRACE_H */

@@ -21,7 +21,7 @@
  *
  * gettimeofday() IS scaled, which looks like a contradiction and is a
  * deliberate one: it is a microsecond clock and every engine here uses it for
- * frame pacing, not for stamping anything. Dead Space's frame timer reads it
+ * frame pacing, not for stamping anything. Katamari's frame timer reads it
  * directly. The cost is that a save stamped from gettimeofday during a scaled
  * run carries the accumulated offset, which is minutes of skew in a
  * development run and never happens in a release build.
