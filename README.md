@@ -96,6 +96,8 @@ host maps those calls as follows:
 - Select: native Android select key
 - Left/right sticks: virtual touch sticks
 - L1/R1: simulated tilt
+- L2/R2: toggle digital rolling mode; D-pad becomes the left virtual stick and
+  X/B/A/Y become the right virtual stick (up/right/down/left)
 - Start: restore the pointer
 - Mouse/touchscreen events: direct touch input when available
 

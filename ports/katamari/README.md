@@ -38,6 +38,8 @@ input service. The port maps handheld controls into those same native calls:
 - Left stick: virtual left touch stick
 - Right stick: virtual right touch stick
 - L1/R1: simulated tilt
+- L2/R2: toggle digital rolling mode; D-pad becomes the left virtual stick and
+  X/B/A/Y become the right virtual stick (up/right/down/left)
 - Start: restore the pointer
 - Mouse/touchscreen input, when available, is passed through directly
 

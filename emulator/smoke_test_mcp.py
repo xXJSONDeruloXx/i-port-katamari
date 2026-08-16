@@ -71,6 +71,13 @@ def main() -> int:
             )
             assert not pressed.get("isError"), pressed
 
+        for control in ("l2", "up", "x"):
+            pressed = call(
+                "tools/call",
+                {"name": "press_control", "arguments": {"control": control}},
+            )
+            assert not pressed.get("isError"), pressed
+
         held = call(
             "tools/call",
             {
@@ -95,6 +102,11 @@ def main() -> int:
         image = next(item for item in capture["content"] if item["type"] == "image")
         import base64
         assert base64.b64decode(image["data"]).startswith(b"\x89PNG\r\n\x1a\n")
+
+        toggle_off = call(
+            "tools/call", {"name": "press_control", "arguments": {"control": "r2"}}
+        )
+        assert not toggle_off.get("isError"), toggle_off
 
         back = call(
             "tools/call", {"name": "press_control", "arguments": {"control": "b"}}
