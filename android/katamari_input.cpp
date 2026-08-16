@@ -17,7 +17,6 @@ enum {
     ACTION_MOVE = 2,
     ACTION_CANCEL = 3,
     KEYCODE_BACK = 4,
-    KEYCODE_MENU = 82,
     KEYCODE_BUTTON_SELECT = 109,
 };
 
@@ -64,6 +63,7 @@ static Uint32 g_cursor_last_ms = 0;
 
 static bool g_mouse_down = false;
 static int g_mouse_id = 2;
+static int g_pause_id = 3;
 static bool g_autopilot = false;
 static int g_autopilot_step = 0;
 static long g_autopilot_next = 0;
@@ -160,6 +160,15 @@ static void tap_cursor(void)
     send_touch(ACTION_DOWN, x, y, g_mouse_id);
     send_touch(ACTION_UP, x, y, g_mouse_id);
     trace("input: virtual tap at %d,%d", x, y);
+}
+
+static void tap_game_pause(void)
+{
+    int x = clamp_coordinate((float)g_width - 1.0f, g_width);
+    int y = clamp_coordinate(23.0f, g_height);
+    send_touch(ACTION_DOWN, x, y, g_pause_id);
+    send_touch(ACTION_UP, x, y, g_pause_id);
+    trace("input: virtual pause tap at %d,%d", x, y);
 }
 
 static void set_virtual_stick(bool left, float x, float y)
@@ -406,8 +415,12 @@ bool katamari_input_event(const SDL_Event *event)
             send_key(KEYCODE_BUTTON_SELECT, ACTION_UP);
             break;
         case SDL_CONTROLLER_BUTTON_START:
-            send_key(KEYCODE_MENU, ACTION_DOWN);
-            send_key(KEYCODE_MENU, ACTION_UP);
+            release_virtual_touches();
+            if (g_digital_roll_mode) {
+                clear_digital_directions();
+                g_digital_roll_mode = false;
+            }
+            tap_game_pause();
             show_cursor();
             break;
         case SDL_CONTROLLER_BUTTON_DPAD_UP:
@@ -665,8 +678,12 @@ bool katamari_input_inject_control(const char *name, bool down)
     }
     if (!strcmp(name, "start")) {
         if (down) {
-            send_key(KEYCODE_MENU, ACTION_DOWN);
-            send_key(KEYCODE_MENU, ACTION_UP);
+            release_virtual_touches();
+            if (g_digital_roll_mode) {
+                clear_digital_directions();
+                g_digital_roll_mode = false;
+            }
+            tap_game_pause();
             show_cursor();
         }
         return true;
