@@ -64,6 +64,7 @@ static Uint32 g_cursor_last_ms = 0;
 static bool g_mouse_down = false;
 static int g_mouse_id = 2;
 static int g_pause_id = 3;
+static int g_reverse_id = 4;
 static bool g_autopilot = false;
 static int g_autopilot_step = 0;
 static long g_autopilot_next = 0;
@@ -164,11 +165,20 @@ static void tap_cursor(void)
 
 static void tap_game_pause(void)
 {
-    int x = clamp_coordinate((float)g_width - 1.0f, g_width);
+    int x = clamp_coordinate((float)g_width * 0.5f, g_width);
     int y = clamp_coordinate(23.0f, g_height);
     send_touch(ACTION_DOWN, x, y, g_pause_id);
     send_touch(ACTION_UP, x, y, g_pause_id);
     trace("input: virtual pause tap at %d,%d", x, y);
+}
+
+static void tap_game_reverse(void)
+{
+    int x = clamp_coordinate((float)g_width * 0.5f, g_width);
+    int y = clamp_coordinate((float)g_height - 23.0f, g_height);
+    send_touch(ACTION_DOWN, x, y, g_reverse_id);
+    send_touch(ACTION_UP, x, y, g_reverse_id);
+    trace("input: virtual reverse tap at %d,%d", x, y);
 }
 
 static void set_virtual_stick(bool left, float x, float y)
@@ -378,7 +388,7 @@ bool katamari_input_event(const SDL_Event *event)
         else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT) {
             bool down = event->caxis.value > 16000;
             if (down && !g_l2_trigger_down)
-                toggle_digital_roll_mode();
+                tap_game_reverse();
             g_l2_trigger_down = down;
         } else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT) {
             bool down = event->caxis.value > 16000;
@@ -728,7 +738,12 @@ bool katamari_input_inject_control(const char *name, bool down)
         move_cursor_direction(dx, dy);
         return true;
     }
-    if (!strcmp(name, "l2") || !strcmp(name, "r2")) {
+    if (!strcmp(name, "l2")) {
+        if (down)
+            tap_game_reverse();
+        return true;
+    }
+    if (!strcmp(name, "r2")) {
         if (down)
             toggle_digital_roll_mode();
         return true;
