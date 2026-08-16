@@ -18,6 +18,7 @@
 #include "classes/katamari.h"
 
 #include "android/cursor_draw.h"
+#include "android/emulator_control.h"
 #include "android/fb_probe.h"
 #include "android/katamari_input.h"
 #include "crash.h"
@@ -322,12 +323,17 @@ int main(int argc, char **argv)
         native_resume(env, (jobject)(uintptr_t)0x42424242);
 
     katamari_input_init(mod, env, kWidth, kHeight);
+    emulator_control_init();
 
     const char *limit_env = getenv("KATAMARI_FRAME_LIMIT");
     const long frame_limit = limit_env ? atol(limit_env) : 0;
     long frames = 0;
     bool running = true;
     while (running && (frame_limit == 0 || frames < frame_limit)) {
+        if (!emulator_control_tick(frames)) {
+            running = false;
+            break;
+        }
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (!katamari_input_event(&event)) {
@@ -348,6 +354,7 @@ int main(int argc, char **argv)
 
         if (window) {
             android_cursor_draw(drawable_w, drawable_h);
+            emulator_control_after_draw(frames, drawable_w, drawable_h);
             SDL_GL_SwapWindow(window);
         }
         if (!alive)
@@ -357,6 +364,7 @@ int main(int argc, char **argv)
     }
 
     trace("frames=%ld", frames);
+    emulator_control_shutdown(frames);
     trace("summary assets=%ld fixed_paths=%ld textures=%ld draws=%ld",
           katamari_asset_files_loaded(), android_io_assets_opened(),
           android_gl_textures_uploaded(),

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <stdint.h>
 #include <string.h>
 
 #include "so_util.h"
@@ -21,6 +22,12 @@ static JNIEnv *g_env = NULL;
 static KatamariKeyFn g_key = NULL;
 static KatamariTouchFn g_touch = NULL;
 static KatamariAccelFn g_accel = NULL;
+using KatamariTriggerFn = int (*)();
+static KatamariTriggerFn g_trigger = NULL;
+static bool g_trace_input = false;
+static uint32_t *g_touch_ptr_f = NULL;
+static uint32_t *g_touch_ptr_b = NULL;
+static uint32_t *g_touch_event_count = NULL;
 static int g_width = 640;
 static int g_height = 480;
 static SDL_GameController *g_controller = NULL;
@@ -63,8 +70,16 @@ static int clamp_coordinate(float value, int maximum)
 
 static void send_touch(int action, int x, int y, int id)
 {
+    if (g_trace_input)
+        trace("input: send touch action=%d x=%d y=%d id=%d fn=%p",
+              action, x, y, id, (void *)g_touch);
     if (g_touch)
         g_touch(g_env, (jobject)(uintptr_t)0x42424242, x, y, id, action);
+    if (g_trace_input && g_touch_ptr_f && g_touch_ptr_b &&
+        g_touch_event_count)
+        trace("input: touch action=%d x=%d y=%d id=%d queue=%u/%u count=%u",
+              action, x, y, id, *g_touch_ptr_f, *g_touch_ptr_b,
+              *g_touch_event_count);
 }
 
 static void send_key(int code, int action)
@@ -224,15 +239,25 @@ void katamari_input_init(so_module *mod, JNIEnv *env, int width, int height)
         mod, "Java_com_namcobandaigames_katamari_AppGLSurfaceView_nativeOnTouchEvent");
     g_accel = (KatamariAccelFn)so_symbol(
         mod, "Java_com_namcobandaigames_katamari_Katamari_nativeOnAccelerate");
+    g_trigger = (KatamariTriggerFn)so_symbol(mod,
+                                              "_ZN6NTouch10getTriggerEv");
+    g_touch_ptr_f = (uint32_t *)so_symbol(mod, "_ZN6NTouch9touchPtrFE");
+    g_touch_ptr_b = (uint32_t *)so_symbol(mod, "_ZN6NTouch9touchPtrBE");
+    g_touch_event_count =
+        (uint32_t *)so_symbol(mod, "_ZN6NTouch13touchEventCntE");
 
     const char *auto_env = getenv("KATAMARI_AUTOPILOT");
     g_autopilot = auto_env && *auto_env && strcmp(auto_env, "0") != 0;
+    const char *trace_env = getenv("KATAMARI_INPUTTRACE");
+    g_trace_input = trace_env && *trace_env && strcmp(trace_env, "0") != 0;
     g_autopilot_step = 0;
     g_autopilot_next = 30;
 
     open_controller();
-    trace("input: touch=%p key=%p accelerometer=%p cursor=%s autopilot=%s",
+    trace("input: touch=%p key=%p accelerometer=%p trigger=%p cursor=%s "
+          "autopilot=%s",
           (void *)g_touch, (void *)g_key, (void *)g_accel,
+          (void *)g_trigger,
           g_cursor_visible ? "visible" : "hidden",
           g_autopilot ? "on" : "off");
 }
@@ -400,6 +425,8 @@ void katamari_input_tick(long frame)
     }
 
     send_accel(0.0, 0.0, 9.8);
+    if (g_trace_input && g_trigger && g_trigger())
+        trace("input: native touch trigger is active at frame %ld", frame);
     autopilot_tick(frame);
 }
 
@@ -418,10 +445,97 @@ void katamari_input_cursor_set(float x, float y)
     show_cursor();
     g_cursor_x = std::max(0.0f, std::min(x, (float)g_width - 1.0f));
     g_cursor_y = std::max(0.0f, std::min(y, (float)g_height - 1.0f));
+    if (g_cursor_down)
+        send_touch(ACTION_MOVE, (int)g_cursor_x, (int)g_cursor_y, g_mouse_id);
 }
 
 void katamari_input_cursor_press(bool down)
 {
-    if (down)
-        tap_cursor();
+    int x = clamp_coordinate(g_cursor_x, g_width);
+    int y = clamp_coordinate(g_cursor_y, g_height);
+    if (down) {
+        if (!g_cursor_down) {
+            send_touch(ACTION_DOWN, x, y, g_mouse_id);
+            g_cursor_down = true;
+        }
+    } else if (g_cursor_down) {
+        send_touch(ACTION_UP, x, y, g_mouse_id);
+        g_cursor_down = false;
+    }
+}
+
+bool katamari_input_inject_control(const char *name, bool down)
+{
+    if (!name)
+        return false;
+
+    if (!strcmp(name, "a") || !strcmp(name, "x")) {
+        katamari_input_cursor_press(down);
+        return true;
+    }
+    if (!strcmp(name, "b")) {
+        if (down)
+            send_key(4, ACTION_DOWN);
+        return true;
+    }
+    if (!strcmp(name, "start")) {
+        if (down)
+            show_cursor();
+        return true;
+    }
+    if (!strcmp(name, "up") || !strcmp(name, "down") ||
+        !strcmp(name, "left") || !strcmp(name, "right")) {
+        if (!down) {
+            if ((!strcmp(name, "up") || !strcmp(name, "down")) &&
+                g_cursor_dy != 0)
+                g_cursor_dy = 0;
+            if ((!strcmp(name, "left") || !strcmp(name, "right")) &&
+                g_cursor_dx != 0)
+                g_cursor_dx = 0;
+            return true;
+        }
+        int dx = 0;
+        int dy = 0;
+        if (!strcmp(name, "left"))
+            dx = -1;
+        else if (!strcmp(name, "right"))
+            dx = 1;
+        else if (!strcmp(name, "up"))
+            dy = -1;
+        else
+            dy = 1;
+        move_cursor_direction(dx, dy);
+        return true;
+    }
+    if (!strcmp(name, "l1") || !strcmp(name, "l2")) {
+        if (down)
+            send_accel(-6.0, 0.0, 0.0);
+        return true;
+    }
+    if (!strcmp(name, "r1") || !strcmp(name, "r2")) {
+        if (down)
+            send_accel(6.0, 0.0, 0.0);
+        return true;
+    }
+    if (!strcmp(name, "select") || !strcmp(name, "y") ||
+        !strcmp(name, "l3") || !strcmp(name, "r3"))
+        return true;
+    return false;
+}
+
+bool katamari_input_inject_stick(const char *name, float x, float y)
+{
+    if (!name)
+        return false;
+    if (!strcmp(name, "left")) {
+        g_lx = (int16_t)std::lround(std::max(-1.0f, std::min(1.0f, x)) * 32767.0f);
+        g_ly = (int16_t)std::lround(std::max(-1.0f, std::min(1.0f, y)) * 32767.0f);
+        return true;
+    }
+    if (!strcmp(name, "right")) {
+        g_rx = (int16_t)std::lround(std::max(-1.0f, std::min(1.0f, x)) * 32767.0f);
+        g_ry = (int16_t)std::lround(std::max(-1.0f, std::min(1.0f, y)) * 32767.0f);
+        return true;
+    }
+    return false;
 }

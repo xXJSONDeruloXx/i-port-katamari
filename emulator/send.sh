@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Append one validated command to a running emulator.
 set -euo pipefail
 
 PORT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CONTROL_DIR="${DEADSPACE_CONTROL_DIR:-$PORT_DIR/emulator/runtime}"
+CONTROL_DIR="${KATAMARI_CONTROL_DIR:-$PORT_DIR/emulator/runtime}"
 COMMANDS="$CONTROL_DIR/commands"
 
 if [ "$#" -lt 1 ]; then
