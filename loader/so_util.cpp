@@ -391,9 +391,9 @@ so_module *so_load_module(const char *filename, struct zip *apk, void *vm) {
 
           // ...and the search path taken literally, with no ABI directory
           // appended. get_arch_path() derives the directory from the *host*
-          // and so always says "armeabi-v7a" on a 32-bit build; Dead Space is
-          // a 2011 Xperia Play release that ships under lib/armeabi, from
-          // before that split was routine. Rather than teach the loader every
+          // and so always says "armeabi-v7a" on a 32-bit build; this Android
+          // library ships under lib/armeabi, from before that split was routine.
+          // Rather than teach the loader every
           // historical ABI folder name, the caller may point the search path
           // straight at the directory holding the .so.
           snprintf(filepath, PATH_MAX, "%s/%s", so_alt_searchpath, current.c_str());
@@ -458,7 +458,7 @@ load_module_success:
 
       // Last point at which the port still sees the module with none of its
       // own code having run. so_initialize() below runs the game's static
-      // constructors - 209 of them in Dead Space - and any one of them that
+      // constructors in the native library - and any one of them that
       // touches an unbound import faults with nothing but an address to show
       // for it. Auditing after the fact is auditing after the crash.
       if (so_after_relocate(mod) != 0)
@@ -470,7 +470,7 @@ load_module_success:
       // And call the JNI_OnLoad method if present.
       //
       // A NULL vm means "the caller drives JNI_OnLoad itself" and is the only
-      // way to opt out. Dead Space needs that: its boot sequence is
+      // way to opt out. Katamari needs that: its boot sequence is
       // JNI_OnLoad -> audio startup -> NativeOnCreate, in that order, on the
       // thread that will own the frame loop, and calling the hook from in here
       // would run it while the module is still half set up - before the import

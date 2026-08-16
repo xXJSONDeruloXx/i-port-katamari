@@ -402,7 +402,7 @@ static bool decode_pvrtc(GLenum format, GLsizei width, GLsizei height,
         return false;
     }
 
-    if (opaque || getenv("DEADSPACE_PVRTC_FORCE_OPAQUE")) {
+    if (opaque || getenv("KATAMARI_PVRTC_FORCE_OPAQUE")) {
         for (size_t i = 3; i < rgba->size(); i += 4)
             (*rgba)[i] = 255;
     }
@@ -436,7 +436,7 @@ extern "C" void probe_glCompressedTexImage2D(
     static bool mali_compat_logged = false;
     g_textures++;
 
-    if (!mali_compat_logged && getenv("DEADSPACE_MALI_COMPAT")) {
+    if (!mali_compat_logged && getenv("KATAMARI_MALI_COMPAT")) {
         trace("Mali compatibility diagnostics: GLES1 table upload resolution active");
         mali_compat_logged = true;
     }
@@ -486,7 +486,7 @@ extern "C" void probe_glCompressedTexImage2D(
      * That is the path on which the original Full donor was proven on the
      * R36S.  Software decoding is a capability fallback, never a donor-wide
      * switch, and can be forced only for diagnostics. */
-    const bool force_pvrtc = getenv("DEADSPACE_PVRTC_SOFTWARE") != NULL;
+    const bool force_pvrtc = getenv("KATAMARI_PVRTC_SOFTWARE") != NULL;
     if (known_pvrtc && (force_pvrtc || !driver_supports_pvrtc()) && upload) {
         std::vector<unsigned char> rgba;
         if (decode_pvrtc(internalformat, width, height, image_size, data,
@@ -569,12 +569,12 @@ extern "C" void probe_glCompressedTexSubImage2D(
  * viewport - a render target of a different size - is left untouched, since
  * that is exactly the call blind remapping would break.
  *
- * DEADSPACE_SCALE picks the policy:
+ * KATAMARI_SCALE picks the policy:
  *   fit      (default) keep the logical aspect, letterbox, no distortion
  *   stretch  fill the panel, minor distortion
  *   integer  largest whole-number fit, letterboxed
  * The panel size comes from SDL_GL_GetDrawableSize (main.cpp calls the init);
- * DEADSPACE_PANEL_W/H override it, both to force a size on a CFW that reports
+ * KATAMARI_PANEL_W/H override it, both to force a size on a CFW that reports
  * the wrong one and to exercise the path under the harness, which otherwise
  * renders at the logical size and would only ever take the identity branch.
  */
@@ -599,8 +599,8 @@ extern "C" void viewport_scale_init(int phys_w, int phys_h,
     g_log_w = log_w > 0 ? log_w : 640;
     g_log_h = log_h > 0 ? log_h : 480;
 
-    phys_w = glprobe_env_int("DEADSPACE_PANEL_W", phys_w);
-    phys_h = glprobe_env_int("DEADSPACE_PANEL_H", phys_h);
+    phys_w = glprobe_env_int("KATAMARI_PANEL_W", phys_w);
+    phys_h = glprobe_env_int("KATAMARI_PANEL_H", phys_h);
     g_phys_w = phys_w;
     g_phys_h = phys_h;
 
@@ -614,7 +614,7 @@ extern "C" void viewport_scale_init(int phys_w, int phys_h,
         return;
     }
 
-    const char *m = getenv("DEADSPACE_SCALE");
+    const char *m = getenv("KATAMARI_SCALE");
     int mode = SCALE_FIT;
     if (m && !strcmp(m, "stretch"))      mode = SCALE_STRETCH;
     else if (m && !strcmp(m, "integer")) mode = SCALE_INTEGER;
@@ -649,7 +649,7 @@ extern "C" void viewport_scale_init(int phys_w, int phys_h,
 /*
  * The same affine the scissor path applies, for the port's own overlay.
  *
- * The software cursor lives in the engine's logical space - input_bridge.cpp
+ * The software cursor lives in the engine's logical space - katamari_input.cpp
  * clamps it to 0..639 x 0..479 because that is what the touch events must
  * carry - but it is painted straight into the physical framebuffer. Without
  * this the arrow could only reach the logical rectangle in the corner of a

@@ -73,7 +73,7 @@ float tanf(float);
  * Neither takes a float, so no ABI bridge is involved: the variable part of an
  * AAPCS argument list is passed identically under soft-float and hard-float.
  */
-extern "C" int deadspace_open(const char *path, int flags, ...)
+extern "C" int katamari_open(const char *path, int flags, ...)
 {
     mode_t mode = 0;
     if (flags & (O_CREAT | O_TMPFILE)) {
@@ -85,7 +85,7 @@ extern "C" int deadspace_open(const char *path, int flags, ...)
     return open(path, flags, mode);
 }
 
-extern "C" int deadspace_ioctl(int fd, int request, ...)
+extern "C" int katamari_ioctl(int fd, int request, ...)
 {
     va_list ap;
     va_start(ap, request);
@@ -104,12 +104,12 @@ extern "C" int deadspace_ioctl(int fd, int request, ...)
  * The generator refuses to emit it for that reason (thunks/libc/generated/
  * impl_tab.h has it commented out as THUNK_MISSING), which is why a sibling port
  * never needed this: its build of the engine never referenced the symbol.
- * Dead Space's does, so leaving it unresolved fails the load outright.
+ * Katamari's does, so leaving it unresolved fails the load outright.
  *
  * It aborts rather than returns: assert() is declared noreturn on both sides,
  * and the caller's code after the call site does not exist.
  */
-extern "C" void deadspace_assert2(const char *file, int line,
+extern "C" void katamari_assert2(const char *file, int line,
                                 const char *func, const char *expr)
 {
     fprintf(stderr, "assertion failed: %s:%d: %s: %s\n",
@@ -155,10 +155,10 @@ DynLibFunction symtable_libm[] = {
     THUNK_SPECIFIC("sqrtf",  HOST_MATH::sqrtf),
     THUNK_SPECIFIC("tanf",   HOST_MATH::tanf),
 
-    NO_THUNK("open",  (uintptr_t)&deadspace_open),
-    NO_THUNK("ioctl", (uintptr_t)&deadspace_ioctl),
+    NO_THUNK("open",  (uintptr_t)&katamari_open),
+    NO_THUNK("ioctl", (uintptr_t)&katamari_ioctl),
     /* No float crosses the boundary, so no ABI bridge is needed. */
-    NO_THUNK("__assert2", (uintptr_t)&deadspace_assert2),
+    NO_THUNK("__assert2", (uintptr_t)&katamari_assert2),
 
     { NULL, 0 },
 };

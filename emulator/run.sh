@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Interactive, host-controlled Dead Space emulator.
+# Interactive, host-controlled Katamari emulator.
 #
 # The game still runs through qemu-arm and Mesa/llvmpipe, as in the immutable
 # verifier, but it has no fixed frame limit and mounts a bidirectional control
@@ -9,20 +9,14 @@
 set -euo pipefail
 
 PORT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GAME_DIR="${DEADSPACE_GAMEDIR:-$PORT_DIR/../NeededFiles/data/deadspace}"
-CONTROL_DIR="${DEADSPACE_CONTROL_DIR:-$PORT_DIR/emulator/runtime}"
-# Development clock acceleration; see src/time_scale.h. Unset means 1x.
-TIME_SCALE="${DEADSPACE_TIME_SCALE:-}"
-IMAGE="${DEADSPACE_BUILD_IMAGE:-deadspace-build}"
+GAME_DIR="${KATAMARI_GAMEDIR:-$PORT_DIR/../NeededFiles/data/katamari}"
+CONTROL_DIR="${KATAMARI_CONTROL_DIR:-$PORT_DIR/emulator/runtime}"
+IMAGE="${KATAMARI_BUILD_IMAGE:-katamari-build}"
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --game-dir)
             GAME_DIR="${2:?--game-dir needs a path}"
-            shift 2
-            ;;
-        --time-scale)
-            TIME_SCALE="${2:?--time-scale needs a number}"
             shift 2
             ;;
         --control-dir)
@@ -35,6 +29,14 @@ while [ "$#" -gt 0 ]; do
             ;;
     esac
 done
+
+if [ ! -d "$GAME_DIR" ]; then
+    echo "game directory not found at $GAME_DIR" >&2
+    exit 2
+fi
+GAME_DIR="$(cd "$GAME_DIR" && pwd -P)"
+mkdir -p "$CONTROL_DIR"
+CONTROL_DIR="$(cd "$CONTROL_DIR" && pwd -P)"
 
 # Docker Desktop on macOS does not share /tmp with its VM coherently: the bind
 # mount is accepted, the container writes into it, and the host sees an empty
@@ -59,7 +61,8 @@ if [ "$(uname -s)" = "Darwin" ]; then
     esac
 fi
 
-if [ ! -f "$GAME_DIR/lib/armeabi/libEAMGameDeadSpace.so" ]; then
+if [ ! -f "$GAME_DIR/lib/armeabi/libkatamari.so" ] ||
+   [ ! -f "$GAME_DIR/assets/fat.bin" ]; then
     echo "game tree not found at $GAME_DIR" >&2
     exit 2
 fi
@@ -68,16 +71,18 @@ mkdir -p "$CONTROL_DIR/screenshots"
 : > "$CONTROL_DIR/commands"
 rm -f "$CONTROL_DIR/status.json" "$CONTROL_DIR/status.json.tmp"
 
-if [ "${DEADSPACE_EMULATOR_SKIP_BUILD:-0}" != "1" ]; then
+if [ "${KATAMARI_EMULATOR_SKIP_BUILD:-0}" != "1" ]; then
     docker run --rm \
         -v "$PORT_DIR":/src \
         -w /src \
         "$IMAGE" make -j4
 fi
 
+# Katamari writes var/savedata.dat while entering a stage, so the donor tree
+# must be writable for an interactive run.
 exec docker run --rm \
     -v "$PORT_DIR":/src \
-    -v "$GAME_DIR":/game:ro \
+    -v "$GAME_DIR":/game \
     -v "$CONTROL_DIR":/control \
     -w /src \
     -e SDL_VIDEODRIVER=offscreen \
@@ -86,22 +91,12 @@ exec docker run --rm \
     -e GALLIUM_DRIVER=llvmpipe \
     -e EGL_PLATFORM=surfaceless \
     -e LOADER_TRACE=1 \
-    -e DEADSPACE_AUTOPILOT="${DEADSPACE_AUTOPILOT:-}" \
-    -e DEADSPACE_AUTOPILOT_FAST="${DEADSPACE_AUTOPILOT_FAST:-}" \
-    -e DEADSPACE_AUTOPILOT_VISUAL="${DEADSPACE_AUTOPILOT_VISUAL:-}" \
-    -e DEADSPACE_FRAME_LIMIT="${DEADSPACE_FRAME_LIMIT:-}" \
-    -e DEADSPACE_FAST_FORWARD="${DEADSPACE_FAST_FORWARD:-}" \
-    -e DEADSPACE_NO_VFP_PATCH="${DEADSPACE_NO_VFP_PATCH:-}" \
-    -e DEADSPACE_VFP_SELFTEST="${DEADSPACE_VFP_SELFTEST:-}" \
-    -e DEADSPACE_TIME_SCALE="$TIME_SCALE" \
-    -e DEADSPACE_CONTROL_DIR=/control \
-    -e DEADSPACE_GL_DIAG="${DEADSPACE_GL_DIAG:-}" \
-    -e DEADSPACE_DONOR_PROFILE="${DEADSPACE_DONOR_PROFILE:-}" \
-    -e DEADSPACE_MALI_COMPAT="${DEADSPACE_MALI_COMPAT:-}" \
-    -e DEADSPACE_PVRTC_SOFTWARE="${DEADSPACE_PVRTC_SOFTWARE:-}" \
-    -e DEADSPACE_TEST_TIME_SCALE="${DEADSPACE_TEST_TIME_SCALE:-}" \
-    -e DEADSPACE_AUTO_SCREENSHOT_FRAME="${DEADSPACE_AUTO_SCREENSHOT_FRAME:-}" \
-    -e DEADSPACE_AUTO_SCREENSHOT_FRAMES="${DEADSPACE_AUTO_SCREENSHOT_FRAMES:-}" \
+    -e KATAMARI_AUTOPILOT="${KATAMARI_AUTOPILOT:-}" \
+    -e KATAMARI_INPUTTRACE="${KATAMARI_INPUTTRACE:-}" \
+    -e KATAMARI_FRAME_LIMIT="${KATAMARI_FRAME_LIMIT:-}" \
+    -e KATAMARI_CONTROL_DIR=/control \
+    -e KATAMARI_AUTO_SCREENSHOT_FRAME="${KATAMARI_AUTO_SCREENSHOT_FRAME:-}" \
+    -e KATAMARI_AUTO_SCREENSHOT_FRAMES="${KATAMARI_AUTO_SCREENSHOT_FRAMES:-}" \
     "$IMAGE" \
     qemu-arm -L /usr/arm-linux-gnueabihf \
-        ./build/deadspace /game
+        ./build/katamari /game

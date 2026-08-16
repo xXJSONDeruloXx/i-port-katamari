@@ -4,7 +4,7 @@
  * Same class of failure as src/symtab_time.cpp, and for the same reason:
  * Debian trixie's armhf is built with 64-bit time_t *and* _FILE_OFFSET_BITS=64,
  * so on the build image sizeof(off_t) == 8. bionic's armeabi off_t is 4 bytes
- * and Dead Space was compiled against that. Binding the game's mmap/lseek/
+ * and the Android library was compiled against that. Binding the game's mmap/lseek/
  * ftruncate straight to the host's - THUNK_DIRECT(mmap) etc. in
  * thunks/libc/generated/impl_tab.h, which is right on any distro that has not
  * made the switch - silently disagrees about the *register layout* of the
@@ -105,7 +105,7 @@ void *bionic_mmap(void *addr, size_t length, int prot, int flags,
      * this file describes exactly that hunt. One env var makes the next one a
      * single run.
      */
-    if (getenv("DEADSPACE_TRACE_MMAP"))
+    if (getenv("KATAMARI_TRACE_MMAP"))
         trace("mmap(%p, %zu, prot=%d, flags=%d, fd=%d, off=%d) = %p%s",
               addr, length, prot, flags, fd, (int)offset, r,
               r == MAP_FAILED ? "  MAP_FAILED" : "");

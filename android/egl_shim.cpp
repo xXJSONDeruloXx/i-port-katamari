@@ -348,7 +348,7 @@ __eglMustCastToProperFunctionPointerType eglGetProcAddress(const char *procname)
 } /* extern "C" */
 
 /*
- * The table the loader binds into libdeadspace.so for its libEGL.so imports.
+ * The table the loader binds into libkatamari.so for its libEGL.so imports.
  */
 #include "thunk_gen.h"
 

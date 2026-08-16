@@ -460,7 +460,7 @@ int gl_probe_deps(const char *path, gl_probe_report_fn emit, void *ctx)
 int gl_probe_main(int argc, char **argv)
 {
     if (argc < 1) {
-        fprintf(stderr, "usage: deadspace --gl-probe <library> [symbol ...]\n");
+        fprintf(stderr, "usage: katamari --gl-probe <library> [symbol ...]\n");
         return 2;
     }
 

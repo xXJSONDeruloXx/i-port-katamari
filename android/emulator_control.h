@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- * Optional host-control channel for the qemu/Mesa development emulator.
- * Everything is inert unless DEADSPACE_CONTROL_DIR is set.
+ * Optional host-control channel for the qemu/Mesa Katamari development
+ * emulator. Everything is inert unless KATAMARI_CONTROL_DIR is set.
  */
 void emulator_control_init(void);
 bool emulator_control_tick(long frame);

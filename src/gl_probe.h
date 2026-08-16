@@ -10,12 +10,12 @@
  *
  * Only a real dlopen from a 32-bit process answers "can this be loaded?", and
  * this binary is the one 32-bit process the port is guaranteed to have. Hence
- * the subcommand: the launcher runs `deadspace --gl-probe <library> [symbol
+ * the subcommand: the launcher runs `katamari --gl-probe <library> [symbol
  * ...]` before committing to a candidate, and falls through to the next tier
  * when it fails.
  */
-#ifndef DEADSPACE_GL_PROBE_H
-#define DEADSPACE_GL_PROBE_H
+#ifndef KATAMARI_GL_PROBE_H
+#define KATAMARI_GL_PROBE_H
 
 #include <stddef.h>
 
@@ -75,4 +75,4 @@ int gl_probe_main(int argc, char **argv);
 }
 #endif
 
-#endif /* DEADSPACE_GL_PROBE_H */
+#endif /* KATAMARI_GL_PROBE_H */

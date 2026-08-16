@@ -1,0 +1,12 @@
+Put your own Katamari Damacy Android 1.0.0 APK, ZIP, or extracted folder in
+this directory. The filename does not matter. The tested donor is:
+
+  MMkatamari-englishhack.apk
+  package com.namcobandaigames.katamari
+  native library lib/armeabi/libkatamari.so
+  native library SHA-256
+  86bbb9a6446c7264c6d333f91c2d5ea9cab62dc551eb581862e188460d17cef7
+
+The port's first launch discovers the donor by its contents, validates the
+native library and game-data tree, and publishes the extracted files
+transactionally. Do not put the PortMaster release ZIP in this directory.

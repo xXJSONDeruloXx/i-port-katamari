@@ -1,5 +1,5 @@
 /*
- * Software cursor for Dead Space's touch-only menus.
+ * Software cursor for Katamari's touch-only menus.
  *
  * The game imports GLES 1.1 and the real R36S driver does not expose a desktop
  * hardware cursor under KMS/DRM. A compact arrow is therefore painted into the
@@ -16,7 +16,7 @@
 #include "trace.h"
 
 #include "cursor_draw.h"
-#include "input_bridge.h"
+#include "katamari_input.h"
 #include "viewport_scale.h"
 
 static uintptr_t find_gles1_function(const char *name)
@@ -121,7 +121,7 @@ extern "C" void android_cursor_draw(int fb_width, int fb_height)
 {
     float cx = 0.0f, cy = 0.0f;
     int visible = 0;
-    android_input_cursor_position(&cx, &cy, &visible);
+    katamari_input_cursor_position(&cx, &cy, &visible);
     if (!visible || fb_width <= 0 || fb_height <= 0)
         return;
 
