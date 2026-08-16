@@ -25,7 +25,8 @@ the first run validates and imports the donor. Releases are at
 
 ## Controls
 
-D-pad moves the pointer; A/X taps; B backs out; Start restores the pointer;
+D-pad moves the pointer; A/X taps; B backs out; Start taps the in-game pause
+button directly and restores the pointer;
 Select sends Android select; L1/R1 simulate tilt; and the analog sticks roll
 normally. L2 or R2 toggles digital rolling mode: the D-pad becomes the left
 virtual stick and X/B/A/Y become the right stick (up/right/down/left).

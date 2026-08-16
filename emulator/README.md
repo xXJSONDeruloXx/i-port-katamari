@@ -71,7 +71,7 @@ The bridge maps controls as follows:
 - L1/R1: simulated accelerometer tilt
 - L2/R2: toggle digital rolling mode; D-pad becomes the left virtual stick and
   X/B/A/Y become the right virtual stick (up/right/down/left)
-- Start: show the pointer
+- Start: tap the in-game pause button directly and show the pointer
 - Mouse events: direct touch input when a windowed SDL driver is available
 
 The logical game panel is 640x480. `KATAMARI_AUTOPILOT=1` runs a conservative
