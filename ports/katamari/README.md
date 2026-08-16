@@ -4,7 +4,8 @@ This port runs the original ARMv5 native Katamari game from the Android APK
 directly on a Linux/ARM handheld. It does not include Android, an emulator, or
 the proprietary game data.
 
-Bring your own copy of the supported Android build:
+Bring your own copy of the supported **I Love Katamari (English)** Android
+build. The APK filename must be `MMkatamari-englishhack.apk`:
 
 ```text
 package: com.namcobandaigames.katamari
@@ -14,13 +15,15 @@ native SHA-256: 86bbb9a6446c7264c6d333f91c2d5ea9cab62dc551eb581862e188460d17cef7
 
 ## Install
 
-1. Install `katamari-portmaster.zip` through PortMaster's `autoinstall`
-   directory and reboot the frontend after the install completes.
-2. Put your APK, ZIP, or an extracted APK folder in the installed
-   `ports/katamari/` directory. The donor filename does not matter.
-3. Launch **Katamari Damacy**. The first launch uses `eapx.py` to discover the
-   donor, validate the native library and assets, and publish them atomically.
-   Keep at least 200 MiB free while it stages the data.
+1. Unzip the release ZIP.
+2. Copy the extracted `katamari/` folder into the handheld's `ports/`
+   directory.
+3. Copy `MMkatamari-englishhack.apk` into `ports/katamari/`.
+4. Copy `Katamari.sh` into `ROMS/PORTS/`.
+5. Launch **Katamari Damacy**. The first launch validates the native library
+   and assets, then imports the APK data atomically.
+
+Keep at least 200 MiB free while it stages the data.
 
 The tested APK is approximately 38 MiB and publishes about 58 MiB of game
 files. Once the import succeeds, the donor can remain in place as a backup or
