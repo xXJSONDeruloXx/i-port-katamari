@@ -38,9 +38,10 @@ input service. The port maps handheld controls into those same native calls:
 - Left stick: virtual left touch stick
 - Right stick: virtual right touch stick
 - L1/R1: simulated tilt
-- L2/R2: toggle digital rolling mode; D-pad becomes the left virtual stick and
-  X/B/A/Y become the right virtual stick (up/right/down/left)
 - Start: tap the in-game pause button directly and restore the pointer
+- L2: tap the in-game reverse/turn control
+- R2: toggle digital rolling mode; D-pad becomes the left virtual stick and
+  X/B/A/Y become the right virtual stick (up/right/down/left)
 - Mouse/touchscreen input, when available, is passed through directly
 
 The pointer is drawn by the host in the game's fixed 640x480 logical space.
