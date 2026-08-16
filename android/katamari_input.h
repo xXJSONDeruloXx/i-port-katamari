@@ -18,4 +18,5 @@ void katamari_input_tick(long frame);
 void katamari_input_cursor_position(float *x, float *y, int *visible);
 void katamari_input_cursor_set(float x, float y);
 void katamari_input_cursor_press(bool down);
-
+bool katamari_input_inject_control(const char *name, bool down);
+bool katamari_input_inject_stick(const char *name, float x, float y);

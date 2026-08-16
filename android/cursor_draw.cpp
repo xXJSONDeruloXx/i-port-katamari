@@ -1,5 +1,5 @@
 /*
- * Software cursor for Dead Space's touch-only menus.
+ * Software cursor for Katamari's touch-only menus.
  *
  * The game imports GLES 1.1 and the real R36S driver does not expose a desktop
  * hardware cursor under KMS/DRM. A compact arrow is therefore painted into the
