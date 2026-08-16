@@ -10,6 +10,11 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <stdint.h>
+#include <vector>
+
+#include <SDL2/SDL.h>
+#include <mpg123.h>
 
 #include "fix_path.h"
 #include "trace.h"
@@ -206,18 +211,269 @@ struct AudioSlot {
     bool loop = false;
     int next = -1;
     float volume = 1.0f;
+    size_t position = 0;
     char name[128] = {};
+    std::vector<int16_t> pcm;
 };
 
 static AudioSlot g_audio[128];
 static int g_next_audio_id = 0;
 static float g_sfx_volume = 1.0f;
+static long g_asset_reads = 0;
+static unsigned int g_audio_events = 0;
+static SDL_AudioDeviceID g_audio_device = 0;
+static SDL_AudioSpec g_audio_spec;
+static SDL_mutex *g_audio_mutex = NULL;
+static bool g_audio_initialized = false;
+static bool g_mpg_initialized = false;
+
+static void trace_audio(const char *operation, jint id, const char *name = NULL)
+{
+    if (g_audio_events >= 64)
+        return;
+    g_audio_events++;
+    trace("katamari audio %s id=%d%s%s%s", operation, id,
+          name ? " name='" : "", name ? name : "",
+          name ? "'" : "");
+}
 
 static AudioSlot *audio_slot(jint id)
 {
     if (id < 0 || id >= (jint)(sizeof(g_audio) / sizeof(g_audio[0])))
         return NULL;
     return &g_audio[id];
+}
+
+static void audio_lock(void)
+{
+    if (g_audio_mutex)
+        SDL_LockMutex(g_audio_mutex);
+}
+
+static void audio_unlock(void)
+{
+    if (g_audio_mutex)
+        SDL_UnlockMutex(g_audio_mutex);
+}
+
+static int16_t clamp_sample(int value)
+{
+    if (value > 32767)
+        return 32767;
+    if (value < -32768)
+        return -32768;
+    return (int16_t)value;
+}
+
+static void audio_callback(void *userdata, Uint8 *stream, int length)
+{
+    (void)userdata;
+    memset(stream, 0, (size_t)length);
+    if (!g_audio_mutex || g_audio_spec.channels != 2 ||
+        g_audio_spec.format != AUDIO_S16SYS)
+        return;
+
+    int16_t *output = (int16_t *)stream;
+    const size_t frames = (size_t)length / (sizeof(int16_t) * 2);
+    audio_lock();
+    for (AudioSlot &slot : g_audio) {
+        if (!slot.playing || slot.pcm.empty())
+            continue;
+
+        for (size_t frame = 0; frame < frames; frame++) {
+            if (slot.position + 1 >= slot.pcm.size()) {
+                if (slot.loop) {
+                    slot.position = 0;
+                } else {
+                    slot.playing = false;
+                    AudioSlot *next = audio_slot(slot.next);
+                    if (next && next->allocated && !next->pcm.empty()) {
+                        next->position = 0;
+                        next->playing = true;
+                    }
+                    break;
+                }
+            }
+
+            const float volume = slot.volume;
+            const int left = (int)output[frame * 2] +
+                             (int)((float)slot.pcm[slot.position] * volume);
+            const int right = (int)output[frame * 2 + 1] +
+                              (int)((float)slot.pcm[slot.position + 1] * volume);
+            output[frame * 2] = clamp_sample(left);
+            output[frame * 2 + 1] = clamp_sample(right);
+            slot.position += 2;
+        }
+    }
+    audio_unlock();
+}
+
+static void ensure_audio(void)
+{
+    if (g_audio_initialized)
+        return;
+    g_audio_initialized = true;
+
+    if (!(SDL_WasInit(SDL_INIT_AUDIO) & SDL_INIT_AUDIO) &&
+        SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
+        trace("katamari audio SDL init failed: %s", SDL_GetError());
+    }
+
+    g_audio_mutex = SDL_CreateMutex();
+    if (!g_audio_mutex) {
+        trace("katamari audio mutex failed: %s", SDL_GetError());
+    } else {
+        SDL_AudioSpec desired;
+        SDL_zero(desired);
+        desired.freq = 44100;
+        desired.format = AUDIO_S16SYS;
+        desired.channels = 2;
+        desired.samples = 1024;
+        desired.callback = audio_callback;
+        g_audio_device = SDL_OpenAudioDevice(NULL, 0, &desired, &g_audio_spec, 0);
+        if (!g_audio_device) {
+            trace("katamari audio output unavailable: %s", SDL_GetError());
+        } else if (g_audio_spec.format != AUDIO_S16SYS ||
+                   g_audio_spec.channels != 2) {
+            trace("katamari audio output format unsupported: %d Hz/0x%x/%d",
+                  g_audio_spec.freq, g_audio_spec.format,
+                  g_audio_spec.channels);
+            SDL_CloseAudioDevice(g_audio_device);
+            g_audio_device = 0;
+        } else {
+            trace("katamari audio output: %d Hz/%d channels", g_audio_spec.freq,
+                  g_audio_spec.channels);
+            SDL_PauseAudioDevice(g_audio_device, 0);
+        }
+    }
+
+    if (!g_mpg_initialized) {
+        int error = mpg123_init();
+        if (error == MPG123_OK)
+            g_mpg_initialized = true;
+        else
+            trace("katamari mpg123 init failed: %s", mpg123_plain_strerror(error));
+    }
+}
+
+static bool convert_audio(const SDL_AudioSpec &source, const Uint8 *data,
+                          Uint32 length, std::vector<int16_t> *output)
+{
+    if (!data || !length || !source.freq || !source.channels)
+        return false;
+
+    SDL_AudioStream *stream = SDL_NewAudioStream(
+        source.format, source.channels, source.freq,
+        AUDIO_S16SYS, 2, 44100);
+    if (!stream)
+        return false;
+    bool okay = SDL_AudioStreamPut(stream, data, (int)length) == 0 &&
+                SDL_AudioStreamFlush(stream) == 0;
+    if (okay) {
+        int available = SDL_AudioStreamAvailable(stream);
+        if (available <= 0 || (available & (int)(sizeof(int16_t) - 1))) {
+            okay = false;
+        } else {
+            output->resize((size_t)available / sizeof(int16_t));
+            int received = SDL_AudioStreamGet(
+                stream, output->data(), available);
+            if (received != available)
+                okay = false;
+        }
+    }
+    SDL_FreeAudioStream(stream);
+    if (!okay)
+        output->clear();
+    return okay;
+}
+
+static bool load_wav(const char *path, std::vector<int16_t> *output)
+{
+    SDL_AudioSpec source;
+    Uint8 *data = NULL;
+    Uint32 length = 0;
+    if (!SDL_LoadWAV(path, &source, &data, &length))
+        return false;
+    bool okay = convert_audio(source, data, length, output);
+    SDL_FreeWAV(data);
+    return okay;
+}
+
+static bool load_mp3(const char *path, std::vector<int16_t> *output)
+{
+    if (!g_mpg_initialized)
+        return false;
+
+    int error = MPG123_OK;
+    mpg123_handle *decoder = mpg123_new(NULL, &error);
+    if (!decoder)
+        return false;
+    bool okay = false;
+    long rate = 0;
+    int channels = 0;
+    int encoding = 0;
+    if (mpg123_open(decoder, path) == MPG123_OK &&
+        mpg123_getformat(decoder, &rate, &channels, &encoding) == MPG123_OK) {
+        if (encoding != MPG123_ENC_SIGNED_16) {
+            mpg123_format_none(decoder);
+            mpg123_format(decoder, rate, channels, MPG123_ENC_SIGNED_16);
+            encoding = MPG123_ENC_SIGNED_16;
+        }
+
+        std::vector<Uint8> compressed_pcm;
+        unsigned char block[16384];
+        for (;;) {
+            size_t received = 0;
+            int result = mpg123_read(decoder, block, sizeof(block), &received);
+            if (received)
+                compressed_pcm.insert(compressed_pcm.end(), block,
+                                       block + received);
+            if (result == MPG123_OK || result == MPG123_NEW_FORMAT)
+                continue;
+            if (result == MPG123_DONE)
+                break;
+            compressed_pcm.clear();
+            break;
+        }
+
+        SDL_AudioSpec source;
+        SDL_zero(source);
+        source.freq = (int)rate;
+        source.channels = (Uint8)channels;
+        source.format = AUDIO_S16LSB;
+        okay = convert_audio(source, compressed_pcm.data(),
+                             (Uint32)compressed_pcm.size(), output);
+    }
+    if (!okay)
+        trace("katamari mp3 decode failed for '%s': %s", path,
+              mpg123_strerror(decoder));
+    mpg123_close(decoder);
+    mpg123_delete(decoder);
+    return okay;
+}
+
+static bool load_sound(const char *name, std::vector<int16_t> *output)
+{
+    char path[PATH_MAX];
+    if (!resolve_asset(name, path, sizeof(path))) {
+        trace("katamari audio asset missing: '%s'", name ? name : "(null)");
+        return false;
+    }
+    ensure_audio();
+
+    const char *extension = strrchr(path, '.');
+    bool okay = extension && strcasecmp(extension, ".wav") == 0
+                    ? load_wav(path, output)
+                    : extension && strcasecmp(extension, ".mp3") == 0
+                    ? load_mp3(path, output)
+                    : false;
+    if (okay) {
+        trace("katamari audio loaded '%s' (%zu frames)", name,
+              output->size() / 2);
+    } else {
+        trace("katamari audio format unsupported or unreadable: '%s'", name);
+    }
+    return okay;
 }
 
 }
@@ -250,6 +506,8 @@ jint Katamari::loadAssetFile(JNIEnv *env, jclass clazz, jstring name,
     }
 
     jint result = read_file(path, buffer, length);
+    if (result > 0)
+        g_asset_reads++;
     trace_asset("asset-read", asset, path, result);
     return result;
 }
@@ -297,56 +555,75 @@ void AudioTool::addSound(JNIEnv *env, jclass clazz, jint id)
 {
     (void)env;
     (void)clazz;
+    audio_lock();
     AudioSlot *slot = audio_slot(id);
-    if (slot)
+    if (slot) {
         slot->allocated = true;
+        trace_audio("addSound", id);
+    }
+    audio_unlock();
 }
 
 void AudioTool::deallocAll(JNIEnv *env, jclass clazz)
 {
     (void)env;
     (void)clazz;
-    memset(g_audio, 0, sizeof(g_audio));
+    audio_lock();
+    for (AudioSlot &slot : g_audio)
+        slot = AudioSlot{};
     g_next_audio_id = 0;
+    audio_unlock();
 }
 
 void AudioTool::dispose(JNIEnv *env, jclass clazz, jint id)
 {
     (void)env;
     (void)clazz;
+    audio_lock();
     AudioSlot *slot = audio_slot(id);
     if (slot)
         *slot = AudioSlot{};
+    audio_unlock();
 }
 
 jint AudioTool::isLoop(JNIEnv *env, jclass clazz, jint id)
 {
     (void)env;
     (void)clazz;
+    audio_lock();
     AudioSlot *slot = audio_slot(id);
-    return slot && slot->allocated && slot->loop ? 1 : 0;
+    jint result = slot && slot->allocated && slot->loop ? 1 : 0;
+    audio_unlock();
+    return result;
 }
 
 jint AudioTool::isPlaying(JNIEnv *env, jclass clazz, jint id)
 {
     (void)env;
     (void)clazz;
+    audio_lock();
     AudioSlot *slot = audio_slot(id);
-    return slot && slot->playing ? 1 : 0;
+    jint result = slot && slot->playing ? 1 : 0;
+    audio_unlock();
+    return result;
 }
 
 jint AudioTool::newID(JNIEnv *env, jclass clazz)
 {
     (void)env;
     (void)clazz;
+    audio_lock();
     for (size_t i = 0; i < sizeof(g_audio) / sizeof(g_audio[0]); i++) {
         int id = (g_next_audio_id + (int)i) % (int)(sizeof(g_audio) / sizeof(g_audio[0]));
         if (!g_audio[id].allocated) {
             g_audio[id].allocated = true;
             g_next_audio_id = (id + 1) % (int)(sizeof(g_audio) / sizeof(g_audio[0]));
+            trace_audio("newID", id);
+            audio_unlock();
             return id;
         }
     }
+    audio_unlock();
     return -1;
 }
 
@@ -354,29 +631,41 @@ void AudioTool::pause(JNIEnv *env, jclass clazz, jint id)
 {
     (void)env;
     (void)clazz;
+    audio_lock();
     AudioSlot *slot = audio_slot(id);
     if (slot)
         slot->playing = false;
+    audio_unlock();
 }
 
 void AudioTool::play(JNIEnv *env, jclass clazz, jint id)
 {
     (void)env;
     (void)clazz;
+    audio_lock();
     AudioSlot *slot = audio_slot(id);
-    if (slot && slot->allocated)
+    if (slot && slot->allocated) {
         slot->playing = true;
+        if (slot->position >= slot->pcm.size())
+            slot->position = 0;
+        trace_audio("play", id, slot->name);
+    }
+    audio_unlock();
 }
 
 void AudioTool::playSound(JNIEnv *env, jclass clazz, jint id, jint loops)
 {
     (void)env;
     (void)clazz;
+    audio_lock();
     AudioSlot *slot = audio_slot(id);
     if (slot && slot->allocated) {
         slot->playing = true;
         slot->loop = loops != 0;
+        slot->position = 0;
+        trace_audio("playSound", id, slot->name);
     }
+    audio_unlock();
 }
 
 void AudioTool::releaseSound(JNIEnv *env, jclass clazz)
@@ -389,41 +678,53 @@ void AudioTool::rewind(JNIEnv *env, jclass clazz, jint id)
 {
     (void)env;
     (void)clazz;
-    (void)id;
+    audio_lock();
+    AudioSlot *slot = audio_slot(id);
+    if (slot)
+        slot->position = 0;
+    audio_unlock();
 }
 
 void AudioTool::setLoop(JNIEnv *env, jclass clazz, jint id, jint loop)
 {
     (void)env;
     (void)clazz;
+    audio_lock();
     AudioSlot *slot = audio_slot(id);
     if (slot)
         slot->loop = loop != 0;
+    audio_unlock();
 }
 
 void AudioTool::setNextPlayer(JNIEnv *env, jclass clazz, jint id, jint next)
 {
     (void)env;
     (void)clazz;
+    audio_lock();
     AudioSlot *slot = audio_slot(id);
     if (slot)
         slot->next = next;
+    audio_unlock();
 }
 
 void AudioTool::setSfxVolume(JNIEnv *env, jclass clazz, jfloat volume)
 {
     (void)env;
     (void)clazz;
+    audio_lock();
     g_sfx_volume = volume;
+    audio_unlock();
 }
 
 void AudioTool::setVolume(JNIEnv *env, jclass clazz, jint id, jfloat volume)
 {
     (void)env;
     (void)clazz;
+    audio_lock();
     AudioSlot *slot = audio_slot(id);
     if (slot)
         slot->volume = volume * g_sfx_volume;
+    audio_unlock();
 }
 
 void AudioTool::setup(JNIEnv *env, jclass clazz, jint id, jstring name,
@@ -434,27 +735,44 @@ void AudioTool::setup(JNIEnv *env, jclass clazz, jint id, jstring name,
     AudioSlot *slot = audio_slot(id);
     if (!slot)
         return;
-    slot->allocated = true;
-    slot->loop = loop != 0;
-    snprintf(slot->name, sizeof(slot->name), "%s",
-             string_value(name) ? string_value(name) : "");
+
+    const char *value = string_value(name);
+    std::vector<int16_t> pcm;
+    load_sound(value, &pcm);
+
+    audio_lock();
+    slot = audio_slot(id);
+    if (slot) {
+        slot->allocated = true;
+        slot->playing = false;
+        slot->loop = loop != 0;
+        slot->position = 0;
+        slot->pcm = std::move(pcm);
+        snprintf(slot->name, sizeof(slot->name), "%s", value ? value : "");
+    }
+    trace_audio("setup", id, slot->name);
+    audio_unlock();
 }
 
 void AudioTool::stop(JNIEnv *env, jclass clazz, jint id)
 {
     (void)env;
     (void)clazz;
+    audio_lock();
     AudioSlot *slot = audio_slot(id);
     if (slot)
         slot->playing = false;
+    audio_unlock();
 }
 
 void AudioTool::stopAll(JNIEnv *env, jclass clazz)
 {
     (void)env;
     (void)clazz;
+    audio_lock();
     for (AudioSlot &slot : g_audio)
         slot.playing = false;
+    audio_unlock();
 }
 
 static const ManagedMethod KatamariMethods[] = {
@@ -532,3 +850,7 @@ Class AudioTool::clazz = {
 static const int registered_katamari = ClassRegistry::register_class(Katamari::clazz);
 static const int registered_audio = ClassRegistry::register_class(AudioTool::clazz);
 
+extern "C" long katamari_asset_files_loaded(void)
+{
+    return g_asset_reads;
+}

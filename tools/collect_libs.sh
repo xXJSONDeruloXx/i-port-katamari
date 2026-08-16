@@ -24,7 +24,7 @@
 # or, equivalently, `make libs`.
 set -euo pipefail
 
-BIN=${1:-build/deadspace}
+BIN=${1:-build/katamari}
 OUT=${2:-build/libs.armhf}
 READELF=${READELF:-arm-linux-gnueabihf-readelf}
 

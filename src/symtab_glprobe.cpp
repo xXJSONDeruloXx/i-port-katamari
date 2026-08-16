@@ -569,12 +569,10 @@ extern "C" void probe_glCompressedTexSubImage2D(
  * viewport - a render target of a different size - is left untouched, since
  * that is exactly the call blind remapping would break.
  *
- * DEADSPACE_SCALE picks the policy:
  *   fit      (default) keep the logical aspect, letterbox, no distortion
  *   stretch  fill the panel, minor distortion
  *   integer  largest whole-number fit, letterboxed
  * The panel size comes from SDL_GL_GetDrawableSize (main.cpp calls the init);
- * DEADSPACE_PANEL_W/H override it, both to force a size on a CFW that reports
  * the wrong one and to exercise the path under the harness, which otherwise
  * renders at the logical size and would only ever take the identity branch.
  */
@@ -599,8 +597,8 @@ extern "C" void viewport_scale_init(int phys_w, int phys_h,
     g_log_w = log_w > 0 ? log_w : 640;
     g_log_h = log_h > 0 ? log_h : 480;
 
-    phys_w = glprobe_env_int("DEADSPACE_PANEL_W", phys_w);
-    phys_h = glprobe_env_int("DEADSPACE_PANEL_H", phys_h);
+    phys_w = glprobe_env_int("KATAMARI_PANEL_W", phys_w);
+    phys_h = glprobe_env_int("KATAMARI_PANEL_H", phys_h);
     g_phys_w = phys_w;
     g_phys_h = phys_h;
 
@@ -614,7 +612,7 @@ extern "C" void viewport_scale_init(int phys_w, int phys_h,
         return;
     }
 
-    const char *m = getenv("DEADSPACE_SCALE");
+    const char *m = getenv("KATAMARI_SCALE");
     int mode = SCALE_FIT;
     if (m && !strcmp(m, "stretch"))      mode = SCALE_STRETCH;
     else if (m && !strcmp(m, "integer")) mode = SCALE_INTEGER;
