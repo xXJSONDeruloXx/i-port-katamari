@@ -25,11 +25,10 @@ the first run validates and imports the donor. Releases are at
 
 ## Controls
 
-D-pad moves the pointer; A/X taps; B is unbound; and Select sends Android
-select. L1/R1 hold a touch at the left/right screen edge for strafing. Start
-pauses through the in-game button; L2 taps the in-game reverse/turn control;
-and R2 toggles accelerometer mode, where the D-pad supplies tilt movement.
-The analog sticks are intentionally unused because this game reads movement
-from its accelerometer path.
+D-pad moves the pointer; A taps; B rapidly taps at the pointer while held; X
+and L2 tap the in-game reverse/turn control; and Select sends Android select.
+L1/R1 hold a touch at the left/right screen edge for strafing. Start pauses
+through the in-game button. Y and R2 toggle accelerometer mode, where the
+D-pad or left analog stick supplies tilt movement.
 
 For the qemu/Mesa harness, see [`emulator/README.md`](emulator/README.md).

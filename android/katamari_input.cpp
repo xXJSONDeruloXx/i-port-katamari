@@ -38,6 +38,8 @@ static bool g_accel_dpad_up = false;
 static bool g_accel_dpad_down = false;
 static bool g_accel_dpad_left = false;
 static bool g_accel_dpad_right = false;
+static float g_accel_stick_x = 0.0f;
+static float g_accel_stick_y = 0.0f;
 static bool g_l2_trigger_down = false;
 static bool g_r2_trigger_down = false;
 static Uint32 g_last_accel_toggle_ms = 0;
@@ -51,6 +53,7 @@ static int g_cursor_dy = 0;
 static Uint32 g_cursor_last_ms = 0;
 
 static bool g_mouse_down = false;
+static bool g_turbo_down = false;
 static int g_mouse_id = 2;
 static int g_pause_id = 3;
 static int g_reverse_id = 4;
@@ -68,6 +71,7 @@ static constexpr double kNeutralAccelZ = 9.8;
 static constexpr double kAccelForwardXOffset = -9.0;
 static constexpr double kAccelBackwardXOffset = 30.0;
 static constexpr double kAccelSideYStep = 12.0;
+static constexpr float kControllerStickDeadzone = 0.20f;
 
 static int clamp_coordinate(float value, int maximum)
 {
@@ -144,15 +148,29 @@ static void move_cursor_direction(int dx, int dy)
     g_cursor_dy = dy;
 }
 
-static void tap_cursor(void)
+static void tap_cursor(bool ensure_visible = true)
 {
-    if (!g_cursor_visible)
+    if (ensure_visible && !g_cursor_visible)
         show_cursor();
     int x = clamp_coordinate(g_cursor_x, g_width);
     int y = clamp_coordinate(g_cursor_y, g_height);
     send_touch(ACTION_DOWN, x, y, g_mouse_id);
     send_touch(ACTION_UP, x, y, g_mouse_id);
     trace("input: virtual tap at %d,%d", x, y);
+}
+
+static float normalize_controller_axis(Sint16 value)
+{
+    const float normalized = std::max(
+        -1.0f, std::min(1.0f, (float)value / 32767.0f));
+    const float magnitude = std::fabs(normalized);
+    if (magnitude <= kControllerStickDeadzone)
+        return 0.0f;
+
+    const float scaled =
+        (magnitude - kControllerStickDeadzone) /
+        (1.0f - kControllerStickDeadzone);
+    return normalized < 0.0f ? -scaled : scaled;
 }
 
 static void tap_game_pause(void)
@@ -310,9 +328,12 @@ void katamari_input_init(so_module *mod, JNIEnv *env, int width, int height)
     g_cursor_last_ms = SDL_GetTicks();
     g_accel_mode = false;
     clear_accel_directions();
+    g_accel_stick_x = 0.0f;
+    g_accel_stick_y = 0.0f;
     g_l2_trigger_down = false;
     g_r2_trigger_down = false;
     g_last_accel_toggle_ms = 0;
+    g_turbo_down = false;
     g_strafe_left_down = false;
     g_strafe_right_down = false;
 
@@ -353,6 +374,7 @@ bool katamari_input_event(const SDL_Event *event)
     switch (event->type) {
     case SDL_QUIT:
         release_strafe_touches();
+        g_turbo_down = false;
         return false;
 
     case SDL_CONTROLLERDEVICEADDED:
@@ -360,7 +382,11 @@ bool katamari_input_event(const SDL_Event *event)
         break;
 
     case SDL_CONTROLLERAXISMOTION:
-        if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT) {
+        if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX) {
+            g_accel_stick_x = normalize_controller_axis(event->caxis.value);
+        } else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
+            g_accel_stick_y = normalize_controller_axis(event->caxis.value);
+        } else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT) {
             bool down = event->caxis.value > 16000;
             if (down && !g_l2_trigger_down)
                 tap_game_reverse();
@@ -379,10 +405,14 @@ bool katamari_input_event(const SDL_Event *event)
             tap_cursor();
             break;
         case SDL_CONTROLLER_BUTTON_X:
-            tap_cursor();
+            tap_game_reverse();
             break;
         case SDL_CONTROLLER_BUTTON_B:
-            trace("input: B ignored (Android back is unbound)");
+            g_turbo_down = true;
+            trace("input: B turbo down");
+            break;
+        case SDL_CONTROLLER_BUTTON_Y:
+            toggle_accel_mode();
             break;
         case SDL_CONTROLLER_BUTTON_BACK:
             send_key(KEYCODE_BUTTON_SELECT, ACTION_DOWN);
@@ -461,6 +491,10 @@ bool katamari_input_event(const SDL_Event *event)
             else {
                 g_cursor_dx = 0;
             }
+            break;
+        case SDL_CONTROLLER_BUTTON_B:
+            g_turbo_down = false;
+            trace("input: B turbo up");
             break;
         case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
             set_strafe_touch(true, false);
@@ -554,10 +588,17 @@ void katamari_input_tick(long frame)
             send_touch(ACTION_MOVE, (int)g_cursor_x, (int)g_cursor_y, g_mouse_id);
     }
 
-    const float drive_axis =
+    if (g_turbo_down)
+        tap_cursor(false);
+
+    const float dpad_drive_axis =
         digital_axis(g_accel_dpad_up, g_accel_dpad_down);
-    const float side_axis =
+    const float dpad_side_axis =
         digital_axis(g_accel_dpad_left, g_accel_dpad_right);
+    const float drive_axis =
+        g_accel_stick_y != 0.0f ? g_accel_stick_y : dpad_drive_axis;
+    const float side_axis =
+        g_accel_stick_x != 0.0f ? g_accel_stick_x : dpad_side_axis;
     const double drive_x_offset =
         drive_axis < 0.0f ? kAccelForwardXOffset
         : drive_axis > 0.0f ? kAccelBackwardXOffset
@@ -610,12 +651,22 @@ bool katamari_input_inject_control(const char *name, bool down)
     if (!name)
         return false;
 
-    if (!strcmp(name, "a") || !strcmp(name, "x")) {
+    if (!strcmp(name, "a")) {
         katamari_input_cursor_press(down);
         return true;
     }
     if (!strcmp(name, "b")) {
-        trace("input: B ignored (Android back is unbound)");
+        g_turbo_down = down;
+        return true;
+    }
+    if (!strcmp(name, "x")) {
+        if (down)
+            tap_game_reverse();
+        return true;
+    }
+    if (!strcmp(name, "y")) {
+        if (down)
+            toggle_accel_mode();
         return true;
     }
     if (!strcmp(name, "start")) {
@@ -637,8 +688,7 @@ bool katamari_input_inject_control(const char *name, bool down)
         }
         return true;
     }
-    if (!strcmp(name, "y") || !strcmp(name, "l3") ||
-        !strcmp(name, "r3")) {
+    if (!strcmp(name, "l3") || !strcmp(name, "r3")) {
         return true;
     }
     if (!strcmp(name, "up") || !strcmp(name, "down") ||

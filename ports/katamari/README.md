@@ -32,14 +32,15 @@ The game exposes touch and accelerometer entry points rather than an Android
 input service. The port maps handheld controls into those same native calls:
 
 - D-pad: move the on-screen pointer
-- A or X: tap at the pointer
-- B: unbound; Android Back is not sent
+- A: tap at the pointer
+- B: rapidly tap at the pointer while held; Android Back is not sent
+- X or L2: tap the in-game reverse/turn control
+- Y or R2: toggle accelerometer mode
 - Select: native Android select key
 - L1/R1: hold a touch at the left/right screen edge to strafe
 - Start: tap the in-game pause button directly and restore the pointer
-- L2: tap the in-game reverse/turn control
-- R2: toggle accelerometer mode; the D-pad supplies tilt movement
-- Analog sticks: unused; the game reads movement from its accelerometer path
+- R2/Y: toggle accelerometer mode; the D-pad or left analog stick supplies
+  tilt movement
 - Mouse/touchscreen input, when available, is passed through directly
 
 The pointer is drawn by the host in the game's fixed 640x480 logical space.
