@@ -16,11 +16,22 @@ bash package_portmaster.sh
 
 The game-data-free package is written to `build/katamari-portmaster.zip`.
 
+## Supported game version
+
+This port is intended for the **I Love Katamari (English)** Android version.
+The game file must be named `MMkatamari-englishhack.apk`.
+
 ## Install
 
-Install the ZIP with PortMaster, reboot the frontend, then place your own
-compatible APK, ZIP, or extracted tree in `ports/katamari/`. Launch Katamari;
-the first run validates and imports the donor. Releases are at
+1. Unzip the release ZIP.
+2. Copy the extracted `katamari/` folder into the handheld's `ports/`
+   directory.
+3. Copy `MMkatamari-englishhack.apk` into `ports/katamari/`.
+4. Copy `Katamari.sh` into `ROMS/PORTS/`.
+5. Launch Katamari from the frontend. The first launch validates and imports
+   the APK data.
+
+Releases are at
 <https://github.com/xXJSONDeruloXx/i-port-katamari/releases>.
 
 ## Controls
