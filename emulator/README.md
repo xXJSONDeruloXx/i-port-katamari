@@ -69,7 +69,8 @@ The bridge maps controls as follows:
 - Select: native Android select key
 - Left/right sticks: virtual touch sticks for rolling
 - L1/R1: simulated accelerometer tilt
-- L2/R2: toggle digital rolling mode; D-pad becomes the left virtual stick and
+- L2: tap the in-game reverse/turn control
+- R2: toggle digital rolling mode; D-pad becomes the left virtual stick and
   X/B/A/Y become the right virtual stick (up/right/down/left)
 - Start: tap the in-game pause button directly and show the pointer
 - Mouse events: direct touch input when a windowed SDL driver is available
