@@ -16,9 +16,9 @@
  *
  * Bump it here when cutting a release; nothing else needs editing.
  */
-#ifndef DEADSPACE_PORT_VERSION_H
-#define DEADSPACE_PORT_VERSION_H
+#ifndef KATAMARI_PORT_VERSION_H
+#define KATAMARI_PORT_VERSION_H
 
-#define DEADSPACE_PORT_VERSION "1.2.8"
+#define KATAMARI_PORT_VERSION "0.1.0"
 
-#endif /* DEADSPACE_PORT_VERSION_H */
+#endif /* KATAMARI_PORT_VERSION_H */
