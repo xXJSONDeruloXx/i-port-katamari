@@ -67,13 +67,14 @@ MCP server in `mcp_server.py`.
 The bridge maps controls as follows:
 
 - D-pad: move the software touch pointer
-- A/X: touch at the pointer
-- B: unbound; Android Back is not sent
+- A: touch at the pointer
+- B: rapidly tap at the pointer while held; Android Back is not sent
+- X/L2: tap the in-game reverse/turn control
+- Y/R2: toggle accelerometer mode
 - Select: native Android select key
 - L1/R1: hold a touch at the left/right screen edge to strafe
-- L2: tap the in-game reverse/turn control
-- R2: toggle accelerometer mode; the D-pad supplies tilt movement
-- Analog sticks: unused; movement uses the accelerometer path
+- R2/Y: toggle accelerometer mode; the D-pad or left analog stick supplies
+  tilt movement
 - Start: tap the in-game pause button directly and show the pointer
 - Mouse events: direct touch input when a windowed SDL driver is available
 
