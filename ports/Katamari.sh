@@ -1,7 +1,7 @@
 #!/bin/bash
 # PORTMASTER: katamari-portmaster.zip, Katamari.sh
 #
-# Katamari Damacy (Android 1.0.0) — PortMaster launcher.
+# I Love Katamari (Android 1.0.0) — PortMaster launcher.
 #
 # The release contains the native loader and its open-source runtime only.
 # The user's own APK is imported on first launch by the bundled eapx engine:

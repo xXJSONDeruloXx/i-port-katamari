@@ -7,13 +7,13 @@
   ],
   "items_opt": [],
   "attr": {
-    "title": "Katamari Damacy",
+    "title": "I Love Katamari",
     "porter": [
       "EapRules"
     ],
-    "desc": "The original Katamari Android game running its ARMv5 native engine directly on Linux through a bionic/JNI compatibility loader.",
+    "desc": "I Love Katamari running its original ARMv5 Android engine directly on Linux through a bionic/JNI compatibility loader.",
     "desc_md": null,
-    "inst": "Supply your own Katamari Android 1.0.0 APK, ZIP, or extracted folder. Put it in ports/katamari/; the first launch extracts and validates it automatically. No game data is included.",
+    "inst": "Supply your own I Love Katamari (English) Android APK named MMkatamari-englishhack.apk. Put it in ports/katamari/; the first launch extracts and validates it automatically. No game data is included.",
     "inst_md": null,
     "genres": [
       "action",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""End-to-end smoke test for the Katamari stdio MCP server."""
+"""End-to-end smoke test for the I Love Katamari stdio MCP server."""
 
 import json
 import os

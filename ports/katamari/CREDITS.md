@@ -1,6 +1,6 @@
-# Katamari port credits
+# I Love Katamari port credits
 
-- Original game: Namco Bandai Games
+- Original game: I Love Katamari, Namco Bandai Games
 - ARM ELF loader and JNI/libc compatibility: derived from gmloader-next and
   Vita so-loader work
 - Fixed-function texture decoder: Imagination Technologies PowerVR SDK

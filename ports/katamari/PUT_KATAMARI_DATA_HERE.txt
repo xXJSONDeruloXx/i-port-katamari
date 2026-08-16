@@ -1,4 +1,4 @@
-Put your own Katamari Damacy Android 1.0.0 APK, ZIP, or extracted folder in
+Put your own I Love Katamari (English) Android APK, ZIP, or extracted folder in
 this directory. The filename does not matter. The tested donor is:
 
   MMkatamari-englishhack.apk

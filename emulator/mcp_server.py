@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MCP server for the Katamari qemu/Mesa development emulator.
+"""MCP server for the I Love Katamari qemu/Mesa development emulator.
 
 It intentionally uses only Python's standard library so any MCP client can run
 it without npm, pip, virtualenvs, or network access. Transport is MCP JSON-RPC over

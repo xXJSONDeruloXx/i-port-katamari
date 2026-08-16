@@ -1,5 +1,5 @@
 /*
- * Katamari native ARM host.
+ * I Love Katamari native ARM host.
  *
  * The APK is a small Java shell around an unstripped ARMv5 C++ game.  The
  * original Java activity owns the lifecycle, so this process supplies the
@@ -124,7 +124,7 @@ static bool create_gl_window(SDL_Window **window_out, SDL_GLContext *context_out
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 
     SDL_Window *window = SDL_CreateWindow(
-        "Katamari Damacy", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        "I Love Katamari", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         kWidth, kHeight, SDL_WINDOW_OPENGL);
     if (window) {
         SDL_GLContext context = SDL_GL_CreateContext(window);
@@ -148,7 +148,7 @@ static bool create_gl_window(SDL_Window **window_out, SDL_GLContext *context_out
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 
     window = SDL_CreateWindow(
-        "Katamari Damacy", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        "I Love Katamari", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         kWidth, kHeight, SDL_WINDOW_OPENGL);
     if (!window) {
         log_window_failure("desktop compatibility window");
@@ -213,7 +213,7 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    trace("Katamari port v%s", KATAMARI_PORT_VERSION);
+    trace("I Love Katamari port v%s", KATAMARI_PORT_VERSION);
     if (argc < 2) {
         fprintf(stderr,
                 "usage: %s <katamari-directory>\n"

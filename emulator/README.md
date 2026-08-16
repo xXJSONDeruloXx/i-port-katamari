@@ -1,4 +1,4 @@
-# Katamari local emulator control
+# I Love Katamari local emulator control
 
 This is the interactive qemu-arm/Mesa development harness for the Katamari
 native host. It keeps the original ARM game loop alive and exposes a small

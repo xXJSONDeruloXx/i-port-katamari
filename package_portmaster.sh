@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build a game-data-free Katamari PortMaster package.
+# Build a game-data-free I Love Katamari PortMaster package.
 set -euo pipefail
 
 cd "$(dirname "$0")"
