@@ -34,6 +34,7 @@ input service. The port maps handheld controls into those same native calls:
 - D-pad: move the on-screen pointer
 - A or X: tap at the pointer
 - B: Android back
+- Select: native Android select key
 - Left stick: virtual left touch stick
 - Right stick: virtual right touch stick
 - L1/R1: simulated tilt
