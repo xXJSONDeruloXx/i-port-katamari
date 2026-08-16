@@ -64,11 +64,17 @@ static long g_autopilot_next = 0;
 
 /* NAccel::setBase() establishes a roughly 30-degree Y tilt as the game's
  * neutral vector.  The observed D-pad-right sample (6, 0, 9.8) matches that
- * base, while the flat sample (0, 0, 9.8) makes the katamari roll forward. */
+ * base, while the flat sample (0, 0, 9.8) makes the katamari roll forward.
+ * The donor's sensor axes are rotated relative to the D-pad: raw X controls
+ * forward/back and raw Y controls left/right.  The base's X bias also means
+ * equal raw offsets produce unequal tilt, so the directional offsets below
+ * are intentionally asymmetric and give each direction a similar intensity. */
 static constexpr double kNeutralAccelX = 6.0;
 static constexpr double kNeutralAccelY = 0.0;
 static constexpr double kNeutralAccelZ = 9.8;
-static constexpr double kAccelDpadStep = 6.0;
+static constexpr double kAccelForwardXOffset = -9.0;
+static constexpr double kAccelBackwardXOffset = 30.0;
+static constexpr double kAccelSideYStep = 12.0;
 
 static int clamp_coordinate(float value, int maximum)
 {
@@ -566,14 +572,19 @@ void katamari_input_tick(long frame)
     }
 
     /* The Android game rolls from gravity, not from virtual analog sticks.
-     * D-pad tilt uses the same sign convention as the old L1/R1 probe. */
+     * Up/down select the donor's forward/back X tilt; left/right select its
+     * lateral Y tilt. */
+    const float drive_axis =
+        digital_axis(g_accel_dpad_up, g_accel_dpad_down);
+    const float side_axis =
+        digital_axis(g_accel_dpad_left, g_accel_dpad_right);
+    const double drive_x_offset =
+        drive_axis < 0.0f ? kAccelForwardXOffset
+        : drive_axis > 0.0f ? kAccelBackwardXOffset
+                            : 0.0;
     send_accel(
-        kNeutralAccelX +
-            digital_axis(g_accel_dpad_left, g_accel_dpad_right) *
-                kAccelDpadStep,
-        kNeutralAccelY +
-            digital_axis(g_accel_dpad_up, g_accel_dpad_down) *
-                kAccelDpadStep,
+        kNeutralAccelX + drive_x_offset,
+        kNeutralAccelY + side_axis * kAccelSideYStep,
         kNeutralAccelZ);
     if (g_trace_input && g_trigger && g_trigger())
         trace("input: native touch trigger is active at frame %ld", frame);
