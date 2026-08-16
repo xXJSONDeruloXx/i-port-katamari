@@ -62,6 +62,11 @@ static bool g_autopilot = false;
 static int g_autopilot_step = 0;
 static long g_autopilot_next = 0;
 
+static constexpr double kNeutralAccelX = 6.0;
+static constexpr double kNeutralAccelY = 0.0;
+static constexpr double kNeutralAccelZ = 9.8;
+static constexpr double kAccelDpadStep = 6.0;
+
 static int clamp_coordinate(float value, int maximum)
 {
     if (maximum <= 0)
@@ -548,9 +553,13 @@ void katamari_input_tick(long frame)
     }
 
     send_accel(
-        digital_axis(g_accel_dpad_left, g_accel_dpad_right) * 6.0,
-        digital_axis(g_accel_dpad_up, g_accel_dpad_down) * 6.0,
-        9.8);
+        kNeutralAccelX +
+            digital_axis(g_accel_dpad_left, g_accel_dpad_right) *
+                kAccelDpadStep,
+        kNeutralAccelY +
+            digital_axis(g_accel_dpad_up, g_accel_dpad_down) *
+                kAccelDpadStep,
+        kNeutralAccelZ);
     if (g_trace_input && g_trigger && g_trigger())
         trace("input: native touch trigger is active at frame %ld", frame);
     autopilot_tick(frame);
