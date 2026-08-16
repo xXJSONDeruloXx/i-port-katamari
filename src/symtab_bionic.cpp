@@ -118,7 +118,7 @@ extern "C" void __cxa_guard_release(void *guard);
 extern "C" int bionic_cxa_guard_acquire(void *guard)
 {
     int rc = __cxa_guard_acquire(guard);
-    if (getenv("DEADSPACE_TRACE_GUARDS"))
+    if (getenv("KATAMARI_TRACE_GUARDS"))
         trace("cxa_guard_acquire(%p) -> %d  [word=0x%08x]",
               guard, rc, *(unsigned *)guard);
     return rc;
@@ -127,7 +127,7 @@ extern "C" int bionic_cxa_guard_acquire(void *guard)
 extern "C" void bionic_cxa_guard_release(void *guard)
 {
     __cxa_guard_release(guard);
-    if (getenv("DEADSPACE_TRACE_GUARDS"))
+    if (getenv("KATAMARI_TRACE_GUARDS"))
         trace("cxa_guard_release(%p)     [word=0x%08x]",
               guard, *(unsigned *)guard);
 }

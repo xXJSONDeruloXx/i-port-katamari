@@ -10,7 +10,7 @@ set -euo pipefail
 PORT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GAME_DIR="${KATAMARI_GAMEDIR:-$PORT_DIR/../NeededFiles/data/katamari}"
 CONTROL_DIR="${KATAMARI_CONTROL_DIR:-$PORT_DIR/emulator/runtime}"
-IMAGE="${KATAMARI_BUILD_IMAGE:-deadspace-build}"
+IMAGE="${KATAMARI_BUILD_IMAGE:-katamari-build}"
 
 while [ "$#" -gt 0 ]; do
     case "$1" in

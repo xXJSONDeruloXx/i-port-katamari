@@ -4,21 +4,12 @@
  * ---------------------------------------------------------------------------
  * What was observed
  *
- * With com/eamobile/Query registered (see jni/classes/eamobile_Query.cpp) the
- * engine finally gets past its content gate and starts loading. Under
  * `qemu-arm -strace` the very first thing it does is:
  *
- *     openat(AT_FDCWD,"appbundle:/EAMCore.ini",O_RDONLY) = -1 ENOENT
- *     openat(AT_FDCWD,"appbundle:/eamcore.ini",O_RDONLY) = -1 ENOENT
  *
  * That is a literal Android URI reaching the host kernel. Two things are worth
  * naming about it:
  *
- *   - it is proof the three binary patches in src/patch.cpp do what they claim.
- *     Before them this path went out through JNI to AssetManager.open(); the
- *     open() syscall above is the fd path they switch the engine onto, and it
- *     is the reason those patches were kept even though they moved no
- *     milestone at the time.
  *   - the engine does NOT strip the scheme itself. On Android it never had to:
  *     "appbundle:" was the flag that sent the name down the AssetManager path,
  *     and the AssetManager was handed the remainder. With that branch patched
@@ -31,8 +22,6 @@
  * build, rather than invented here:
  *
  *   appbundle:/X                            -> <gamedir>/assets/X
- *   .../Android/data/com.ea.deadspace/files/ -> that prefix deleted
- *   deadspace/published                      -> deadspace/assets/published
  *
  * The second and third exist because the engine also builds absolute paths out
  * of the app data directory it thinks it has. They are applied in that order
@@ -42,7 +31,6 @@
  * One deliberate divergence from the reference. After those rules a path can
  * still be rooted somewhere that does not exist here (the Vita port's data
  * directory is a constant; ours is argv[1] and only known at runtime), so a
- * path that still names "deadspace/assets/" anywhere is re-rooted onto the
  * game directory. Without that, any name the engine derives from
  * GetAppDataDirectory - a JNI call this port answers with NULL - would land
  * outside the mounted tree and fail the same silent ENOENT way the scheme did.

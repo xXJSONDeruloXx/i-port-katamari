@@ -34,12 +34,8 @@ cp LICENSE "$STAGE/katamari/licenses/LICENSE-portmaster-port.txt"
 cp NOTICE.md "$STAGE/katamari/licenses/NOTICE.md"
 cp third_party/gmloader/LICENSE.md \
    "$STAGE/katamari/licenses/LICENSE-gmloader.md"
-cp third_party/deadspace-vita/LICENSE \
-   "$STAGE/katamari/licenses/LICENSE-deadspace-vita.txt"
 cp third_party/powervr/LICENSE.md \
    "$STAGE/katamari/licenses/LICENSE-powervr.txt"
-cp third_party/vfpvector/LICENSE \
-   "$STAGE/katamari/licenses/LICENSE-vfpvector.txt"
 mv "$STAGE/katamari/libs.armhf/licenses/"* \
    "$STAGE/katamari/licenses/libraries/"
 rmdir "$STAGE/katamari/libs.armhf/licenses"

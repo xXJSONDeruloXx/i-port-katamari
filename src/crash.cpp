@@ -6,7 +6,6 @@
  * one thing worth printing is the faulting PC *relative to the module's text*,
  * which is directly usable:
  *
- *     unzip -p deadspace.apk lib/armeabi-v7a/libdeadspace.so > /tmp/g.so
  *     arm-linux-gnueabihf-objdump -d --start-address=0x<off-0x20> \
  *         --stop-address=0x<off+0x20> /tmp/g.so
  *
@@ -38,7 +37,6 @@ static const char *g_soname    = "module";
  * write to fd 2 a few bytes at a time, and the two reports interleave into
  * something like
  *
- *     r0libEAMGameDeadSpace.so = +0x57bc27640x003e7198
  *
  * which is not a corrupted register, it is two lines braided together. That
  * cost an evening: it reads as though the crash handler itself had faulted, so
@@ -243,7 +241,6 @@ static void on_fault(int sig, siginfo_t *si, void *ucontext)
          * wrong: this thread dies, the process goes with it, and the winner is
          * killed mid-sentence. The first attempt at this fix produced
          *
-         *     pc = 0x4f66f384  (libEAMGameDeadSpace.so
          *
          * - the report truncated exactly where the other thread pulled the
          * floor out. So the loser parks instead and lets the winner finish and

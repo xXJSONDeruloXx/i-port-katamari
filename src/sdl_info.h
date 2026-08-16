@@ -20,8 +20,8 @@
  * container that is Debian's SDL, whose driver list has x11/wayland/offscreen
  * and no mali - correct for the container, and nothing like a console's.
  */
-#ifndef DEADSPACE_SDL_INFO_H
-#define DEADSPACE_SDL_INFO_H
+#ifndef KATAMARI_SDL_INFO_H
+#define KATAMARI_SDL_INFO_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,4 +37,4 @@ int sdl_info_main(void);
 }
 #endif
 
-#endif /* DEADSPACE_SDL_INFO_H */
+#endif

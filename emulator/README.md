@@ -27,7 +27,7 @@ repository. `KATAMARI_GAMEDIR` and `KATAMARI_CONTROL_DIR` override the defaults.
 The game directory is mounted writable because the native save code creates
 `var/savedata.dat` during normal navigation.
 
-The runner builds with the `deadspace-build` Docker image by default. Set
+The runner builds with the `katamari-build` Docker image by default. Set
 `KATAMARI_BUILD_IMAGE` to use another local image. Set
 `KATAMARI_EMULATOR_SKIP_BUILD=1` when the current `build/katamari` is already
 available.

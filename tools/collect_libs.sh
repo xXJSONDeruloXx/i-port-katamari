@@ -20,7 +20,6 @@
 # device's business, not the port's.
 #
 # Run it inside the build container:
-#   docker run --rm -v "$PWD":/src -w /src deadspace-build tools/collect_libs.sh
 # or, equivalently, `make libs`.
 set -euo pipefail
 

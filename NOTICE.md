@@ -12,7 +12,6 @@ Their notices remain applicable to the corresponding source files.
 | `loader/leb128.h` | GNU binutils | GPL |
 | `thunks/khronos/` | glad and Khronos headers | MIT / Apache-2.0 |
 | `third_party/powervr/PVRTDecompress.*` | Imagination Technologies PowerVR SDK | MIT |
-| `src/vfp_vector_patch.cpp` | VFPVector by Bythos14 | MIT |
 | `tools/eapx.py` | written for this project | GPL-3.0 |
 
 The ARM shared libraries under `libs.armhf/` are copied from Debian armhf

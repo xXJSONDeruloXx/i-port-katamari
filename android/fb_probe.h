@@ -6,8 +6,8 @@
  * well-behaved stubs produces. The only way to tell them apart without a human
  * looking at a screen is to read the pixels back.
  */
-#ifndef DEADSPACE_FB_PROBE_H
-#define DEADSPACE_FB_PROBE_H
+#ifndef KATAMARI_FB_PROBE_H
+#define KATAMARI_FB_PROBE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,4 +26,4 @@ void android_fb_probe(long frame, int width, int height);
 }
 #endif
 
-#endif /* DEADSPACE_FB_PROBE_H */
+#endif

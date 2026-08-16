@@ -9,7 +9,6 @@
  * So the version is defined here and nowhere else:
  *
  *   - the loader prints it as its first trace line, and answers --version;
- *   - the launcher asks the binary (`deadspace --version`) instead of carrying
  *     its own copy of the string, so a stale launcher cannot claim a version
  *     the binary is not;
  *   - the packager reads this header when it reports what it built.

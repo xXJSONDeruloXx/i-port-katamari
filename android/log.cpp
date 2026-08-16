@@ -68,7 +68,6 @@ void __google_potentially_blocking_region_end(void) {}
 } /* extern "C" */
 
 /*
- * The table the loader binds into libdeadspace.so for liblog.so, plus the two
  * bionic profiling hooks that live in libc but have no thunk of their own.
  */
 #include "so_util.h"

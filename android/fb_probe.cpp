@@ -81,8 +81,8 @@ void android_fb_probe(long frame, int width, int height)
         return;
 
     if (g_interval < 0) {
-        g_interval  = env_int("DEADSPACE_FB_PROBE_INTERVAL", DEFAULT_INTERVAL);
-        g_threshold = env_int("DEADSPACE_FB_PROBE_THRESHOLD", DEFAULT_THRESHOLD);
+        g_interval  = env_int("KATAMARI_FB_PROBE_INTERVAL", DEFAULT_INTERVAL);
+        g_threshold = env_int("KATAMARI_FB_PROBE_THRESHOLD", DEFAULT_THRESHOLD);
         if (g_interval == 0) {
             g_done = true;          /* explicitly switched off */
             return;

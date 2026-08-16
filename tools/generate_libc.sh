@@ -14,14 +14,14 @@ set -euo pipefail
 PORT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARCH="${ARCH:-arm-linux-gnueabihf}"
 
-docker build -t deadspace-codegen -f - "$PORT_DIR" >/dev/null <<'DOCKERFILE'
-FROM deadspace-build
+docker build -t katamari-codegen -f - "$PORT_DIR" >/dev/null <<'DOCKERFILE'
+FROM katamari-build
 RUN apt-get update && apt-get install -y --no-install-recommends \
       clang python3-clang libclang-dev python3 \
     && rm -rf /var/lib/apt/lists/*
 DOCKERFILE
 
-docker run --rm -v "$PORT_DIR":/src -w /src deadspace-codegen bash -lc "
+docker run --rm -v "$PORT_DIR":/src -w /src katamari-codegen bash -lc "
     PYTHONPATH=/src/tools/clang19_compat python3 thunks/libc/generate_libc.py $ARCH \
         --llvm-library-file /usr/lib/llvm-19/lib/libclang.so \
         --llvm-includes /usr/$ARCH/include"

@@ -1,7 +1,6 @@
 /*
  * The GLES 1.1 import table.
  *
- * Dead Space is fixed-function: 190 gl* imports, zero shader calls. That makes
  * thunks/khronos/gles2.cpp - generated from glad for a GLES2 game - answer none
  * of them, which is why this file exists rather than an addition to that one.
  *
