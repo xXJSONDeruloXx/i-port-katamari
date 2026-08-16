@@ -35,6 +35,7 @@
 #include "viewport_scale.h"
 
 extern "C" long android_io_assets_opened(void);
+extern "C" long katamari_asset_files_loaded(void);
 extern "C" long android_gl_textures_uploaded(void);
 extern "C" long android_gl_draw_calls(void);
 extern "C" long android_gl_rgba_uploaded(void);
@@ -367,8 +368,9 @@ int main(int argc, char **argv)
     }
 
     trace("frames=%ld", frames);
-    trace("summary assets=%ld textures=%ld draws=%ld",
-          android_io_assets_opened(), android_gl_textures_uploaded(),
+    trace("summary assets=%ld fixed_paths=%ld textures=%ld draws=%ld",
+          katamari_asset_files_loaded(), android_io_assets_opened(),
+          android_gl_textures_uploaded(),
           android_gl_draw_calls());
     trace("texture summary atc_decoded=%ld pvrtc_native=%ld pvrtc_decoded=%ld "
           "rgba=%ld subimage=%ld passthrough=%ld failed=%ld gl_errors=%ld",
