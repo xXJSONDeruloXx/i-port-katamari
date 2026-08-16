@@ -25,11 +25,11 @@ the first run validates and imports the donor. Releases are at
 
 ## Controls
 
-D-pad moves the pointer; A/X taps; B backs out; Start taps the in-game pause
-button directly and restores the pointer;
-Select sends Android select; L1/R1 simulate tilt; and the analog sticks roll
-normally. L2 taps the in-game reverse/turn control; R2 toggles digital rolling
-mode, where the D-pad becomes the left virtual stick and X/B/A/Y become the
-right stick (up/right/down/left).
+D-pad moves the pointer; A/X taps; B is unbound; and Select sends Android
+select. L1/R1 hold a touch at the left/right screen edge for strafing. Start
+pauses through the in-game button; L2 taps the in-game reverse/turn control;
+and R2 toggles accelerometer mode, where the D-pad supplies tilt movement.
+The analog sticks are intentionally unused because this game reads movement
+from its accelerometer path.
 
 For the qemu/Mesa harness, see [`emulator/README.md`](emulator/README.md).
