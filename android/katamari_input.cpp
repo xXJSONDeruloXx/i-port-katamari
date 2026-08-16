@@ -16,7 +16,6 @@ enum {
     ACTION_UP = 1,
     ACTION_MOVE = 2,
     ACTION_CANCEL = 3,
-    KEYCODE_BACK = 4,
     KEYCODE_BUTTON_SELECT = 109,
 };
 
@@ -34,24 +33,14 @@ static int g_width = 640;
 static int g_height = 480;
 static SDL_GameController *g_controller = NULL;
 
-static int16_t g_lx = 0;
-static int16_t g_ly = 0;
-static int16_t g_rx = 0;
-static int16_t g_ry = 0;
-static bool g_left_active = false;
-static bool g_right_active = false;
-static bool g_digital_roll_mode = false;
-static bool g_dpad_up = false;
-static bool g_dpad_down = false;
-static bool g_dpad_left = false;
-static bool g_dpad_right = false;
-static bool g_face_up = false;
-static bool g_face_down = false;
-static bool g_face_left = false;
-static bool g_face_right = false;
+static bool g_accel_mode = false;
+static bool g_accel_dpad_up = false;
+static bool g_accel_dpad_down = false;
+static bool g_accel_dpad_left = false;
+static bool g_accel_dpad_right = false;
 static bool g_l2_trigger_down = false;
 static bool g_r2_trigger_down = false;
-static Uint32 g_last_roll_toggle_ms = 0;
+static Uint32 g_last_accel_toggle_ms = 0;
 
 static float g_cursor_x = 320.0f;
 static float g_cursor_y = 240.0f;
@@ -65,17 +54,13 @@ static bool g_mouse_down = false;
 static int g_mouse_id = 2;
 static int g_pause_id = 3;
 static int g_reverse_id = 4;
+static int g_strafe_left_id = 5;
+static int g_strafe_right_id = 6;
+static bool g_strafe_left_down = false;
+static bool g_strafe_right_down = false;
 static bool g_autopilot = false;
 static int g_autopilot_step = 0;
 static long g_autopilot_next = 0;
-
-static float axis_value(int16_t value)
-{
-    float scaled = (float)value / 32767.0f;
-    if (fabsf(scaled) < 0.16f)
-        return 0.0f;
-    return std::max(-1.0f, std::min(1.0f, scaled));
-}
 
 static int clamp_coordinate(float value, int maximum)
 {
@@ -181,44 +166,50 @@ static void tap_game_reverse(void)
     trace("input: virtual reverse tap at %d,%d", x, y);
 }
 
-static void set_virtual_stick(bool left, float x, float y)
+static int side_touch_x(bool left)
 {
-    const int id = left ? 0 : 1;
-    const float base_x = left ? g_width * 0.22f : g_width * 0.78f;
-    const float base_y = g_height * 0.72f;
-    const float radius = std::min(g_width, g_height) * 0.18f;
-    const float magnitude = std::sqrt(x * x + y * y);
-    bool &active = left ? g_left_active : g_right_active;
-
-    if (magnitude < 0.16f) {
-        if (active) {
-            send_touch(ACTION_UP, clamp_coordinate(base_x, g_width),
-                       clamp_coordinate(base_y, g_height), id);
-            active = false;
-        }
-        return;
-    }
-
-    float length = std::min(1.0f, magnitude);
-    float px = base_x + x / (magnitude ? magnitude : 1.0f) * radius * length;
-    float py = base_y + y / (magnitude ? magnitude : 1.0f) * radius * length;
-    int ix = clamp_coordinate(px, g_width);
-    int iy = clamp_coordinate(py, g_height);
-
-    send_touch(active ? ACTION_MOVE : ACTION_DOWN, ix, iy, id);
-    active = true;
+    return left ? clamp_coordinate(1.0f, g_width)
+                : clamp_coordinate((float)g_width - 2.0f, g_width);
 }
 
-static void release_virtual_touches(void)
+static int side_touch_y(void)
 {
-    if (g_left_active) {
-        send_touch(ACTION_UP, (int)(g_width * 0.22f), (int)(g_height * 0.72f), 0);
-        g_left_active = false;
+    return clamp_coordinate((float)g_height * 0.5f, g_height);
+}
+
+static void set_strafe_touch(bool left, bool down)
+{
+    bool &active = left ? g_strafe_left_down : g_strafe_right_down;
+    const int id = left ? g_strafe_left_id : g_strafe_right_id;
+    const int x = side_touch_x(left);
+    const int y = side_touch_y();
+
+    if (down && !active) {
+        send_touch(ACTION_DOWN, x, y, id);
+        active = true;
+        trace("input: strafe %s touch down at %d,%d",
+              left ? "left" : "right", x, y);
+    } else if (!down && active) {
+        send_touch(ACTION_UP, x, y, id);
+        active = false;
+        trace("input: strafe %s touch up", left ? "left" : "right");
     }
-    if (g_right_active) {
-        send_touch(ACTION_UP, (int)(g_width * 0.78f), (int)(g_height * 0.72f), 1);
-        g_right_active = false;
-    }
+}
+
+static void update_strafe_touches(void)
+{
+    if (g_strafe_left_down)
+        send_touch(ACTION_MOVE, side_touch_x(true), side_touch_y(),
+                   g_strafe_left_id);
+    if (g_strafe_right_down)
+        send_touch(ACTION_MOVE, side_touch_x(false), side_touch_y(),
+                   g_strafe_right_id);
+}
+
+static void release_strafe_touches(void)
+{
+    set_strafe_touch(true, false);
+    set_strafe_touch(false, false);
 }
 
 static float digital_axis(bool negative, bool positive)
@@ -228,58 +219,42 @@ static float digital_axis(bool negative, bool positive)
     return positive ? 1.0f : -1.0f;
 }
 
-static void clear_digital_directions(void)
+static void clear_accel_directions(void)
 {
-    g_dpad_up = false;
-    g_dpad_down = false;
-    g_dpad_left = false;
-    g_dpad_right = false;
-    g_face_up = false;
-    g_face_down = false;
-    g_face_left = false;
-    g_face_right = false;
+    g_accel_dpad_up = false;
+    g_accel_dpad_down = false;
+    g_accel_dpad_left = false;
+    g_accel_dpad_right = false;
 }
 
-static void toggle_digital_roll_mode(void)
+static void toggle_accel_mode(void)
 {
     Uint32 now = SDL_GetTicks();
-    if (g_last_roll_toggle_ms && now - g_last_roll_toggle_ms < 200)
+    if (g_last_accel_toggle_ms && now - g_last_accel_toggle_ms < 200)
         return;
-    g_last_roll_toggle_ms = now;
+    g_last_accel_toggle_ms = now;
 
-    release_virtual_touches();
-    clear_digital_directions();
-    g_digital_roll_mode = !g_digital_roll_mode;
-    if (g_digital_roll_mode)
+    release_strafe_touches();
+    clear_accel_directions();
+    g_accel_mode = !g_accel_mode;
+    if (g_accel_mode)
         hide_cursor();
     else
         show_cursor();
-    trace("input: digital roll controls %s",
-          g_digital_roll_mode ? "on" : "off");
+    trace("input: accelerometer D-pad mode %s",
+          g_accel_mode ? "on" : "off");
 }
 
-static void set_digital_dpad(const char *name, bool down)
+static void set_accel_dpad(const char *name, bool down)
 {
     if (!strcmp(name, "up"))
-        g_dpad_up = down;
+        g_accel_dpad_up = down;
     else if (!strcmp(name, "down"))
-        g_dpad_down = down;
+        g_accel_dpad_down = down;
     else if (!strcmp(name, "left"))
-        g_dpad_left = down;
+        g_accel_dpad_left = down;
     else if (!strcmp(name, "right"))
-        g_dpad_right = down;
-}
-
-static void set_digital_face(const char *name, bool down)
-{
-    if (!strcmp(name, "x"))
-        g_face_up = down;
-    else if (!strcmp(name, "a"))
-        g_face_down = down;
-    else if (!strcmp(name, "y"))
-        g_face_left = down;
-    else if (!strcmp(name, "b"))
-        g_face_right = down;
+        g_accel_dpad_right = down;
 }
 
 static void autopilot_tick(long frame)
@@ -302,13 +277,14 @@ static void autopilot_tick(long frame)
         g_autopilot_next = frame + 45;
         break;
     case 3:
-        set_virtual_stick(true, 0.75f, 0.0f);
-        set_virtual_stick(false, 0.0f, -0.75f);
+        toggle_accel_mode();
+        set_accel_dpad("right", true);
         g_autopilot_next = frame + 90;
         break;
     default:
-        set_virtual_stick(true, 0.0f, 0.0f);
-        set_virtual_stick(false, 0.0f, 0.0f);
+        clear_accel_directions();
+        if (g_accel_mode)
+            toggle_accel_mode();
         g_autopilot_next = frame + 120;
         break;
     }
@@ -325,13 +301,13 @@ void katamari_input_init(so_module *mod, JNIEnv *env, int width, int height)
     g_cursor_y = g_height * 0.5f;
     g_cursor_visible = true;
     g_cursor_last_ms = SDL_GetTicks();
-    g_left_active = false;
-    g_right_active = false;
-    g_digital_roll_mode = false;
-    clear_digital_directions();
+    g_accel_mode = false;
+    clear_accel_directions();
     g_l2_trigger_down = false;
     g_r2_trigger_down = false;
-    g_last_roll_toggle_ms = 0;
+    g_last_accel_toggle_ms = 0;
+    g_strafe_left_down = false;
+    g_strafe_right_down = false;
 
     g_key = (KatamariKeyFn)so_symbol(
         mod, "Java_com_namcobandaigames_katamari_AppGLSurfaceView_nativeOnKeyEvent");
@@ -369,7 +345,7 @@ bool katamari_input_event(const SDL_Event *event)
 
     switch (event->type) {
     case SDL_QUIT:
-        release_virtual_touches();
+        release_strafe_touches();
         return false;
 
     case SDL_CONTROLLERDEVICEADDED:
@@ -377,15 +353,7 @@ bool katamari_input_event(const SDL_Event *event)
         break;
 
     case SDL_CONTROLLERAXISMOTION:
-        if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX)
-            g_lx = event->caxis.value;
-        else if (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTY)
-            g_ly = event->caxis.value;
-        else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTX)
-            g_rx = event->caxis.value;
-        else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTY)
-            g_ry = event->caxis.value;
-        else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT) {
+        if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT) {
             bool down = event->caxis.value > 16000;
             if (down && !g_l2_trigger_down)
                 tap_game_reverse();
@@ -393,7 +361,7 @@ bool katamari_input_event(const SDL_Event *event)
         } else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT) {
             bool down = event->caxis.value > 16000;
             if (down && !g_r2_trigger_down)
-                toggle_digital_roll_mode();
+                toggle_accel_mode();
             g_r2_trigger_down = down;
         }
         break;
@@ -401,75 +369,56 @@ bool katamari_input_event(const SDL_Event *event)
     case SDL_CONTROLLERBUTTONDOWN:
         switch (event->cbutton.button) {
         case SDL_CONTROLLER_BUTTON_A:
-            if (g_digital_roll_mode)
-                set_digital_face("a", true);
-            else
-                tap_cursor();
+            tap_cursor();
             break;
         case SDL_CONTROLLER_BUTTON_X:
-            if (g_digital_roll_mode)
-                set_digital_face("x", true);
-            else
-                tap_cursor();
+            tap_cursor();
             break;
         case SDL_CONTROLLER_BUTTON_B:
-            if (g_digital_roll_mode)
-                set_digital_face("b", true);
-            else {
-                send_key(KEYCODE_BACK, ACTION_DOWN);
-                send_key(KEYCODE_BACK, ACTION_UP);
-            }
+            trace("input: B ignored (Android back is unbound)");
             break;
         case SDL_CONTROLLER_BUTTON_BACK:
             send_key(KEYCODE_BUTTON_SELECT, ACTION_DOWN);
             send_key(KEYCODE_BUTTON_SELECT, ACTION_UP);
             break;
         case SDL_CONTROLLER_BUTTON_START:
-            release_virtual_touches();
-            if (g_digital_roll_mode) {
-                clear_digital_directions();
-                g_digital_roll_mode = false;
+            release_strafe_touches();
+            if (g_accel_mode) {
+                clear_accel_directions();
+                g_accel_mode = false;
             }
             tap_game_pause();
             show_cursor();
             break;
         case SDL_CONTROLLER_BUTTON_DPAD_UP:
-            if (g_digital_roll_mode)
-                set_digital_dpad("up", true);
+            if (g_accel_mode)
+                set_accel_dpad("up", true);
             else
                 move_cursor_direction(0, -1);
             break;
         case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
-            if (g_digital_roll_mode)
-                set_digital_dpad("down", true);
+            if (g_accel_mode)
+                set_accel_dpad("down", true);
             else
                 move_cursor_direction(0, 1);
             break;
         case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
-            if (g_digital_roll_mode)
-                set_digital_dpad("left", true);
+            if (g_accel_mode)
+                set_accel_dpad("left", true);
             else
                 move_cursor_direction(-1, 0);
             break;
         case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
-            if (g_digital_roll_mode)
-                set_digital_dpad("right", true);
+            if (g_accel_mode)
+                set_accel_dpad("right", true);
             else
                 move_cursor_direction(1, 0);
             break;
-        case SDL_CONTROLLER_BUTTON_LEFTSTICK:
-        case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
-            show_cursor();
-            break;
         case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
-            send_accel(-6.0, 0.0, 0.0);
+            set_strafe_touch(true, true);
             break;
         case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
-            send_accel(6.0, 0.0, 0.0);
-            break;
-        case SDL_CONTROLLER_BUTTON_Y:
-            if (g_digital_roll_mode)
-                set_digital_face("y", true);
+            set_strafe_touch(false, true);
             break;
         default:
             break;
@@ -478,49 +427,39 @@ bool katamari_input_event(const SDL_Event *event)
 
     case SDL_CONTROLLERBUTTONUP:
         switch (event->cbutton.button) {
-        case SDL_CONTROLLER_BUTTON_A:
-            if (g_digital_roll_mode)
-                set_digital_face("a", false);
-            break;
-        case SDL_CONTROLLER_BUTTON_B:
-            if (g_digital_roll_mode)
-                set_digital_face("b", false);
-            break;
-        case SDL_CONTROLLER_BUTTON_X:
-            if (g_digital_roll_mode)
-                set_digital_face("x", false);
-            break;
-        case SDL_CONTROLLER_BUTTON_Y:
-            if (g_digital_roll_mode)
-                set_digital_face("y", false);
-            break;
         case SDL_CONTROLLER_BUTTON_DPAD_UP:
-            if (g_digital_roll_mode)
-                set_digital_dpad("up", false);
+            if (g_accel_mode)
+                set_accel_dpad("up", false);
             else {
                 g_cursor_dy = 0;
             }
             break;
         case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
-            if (g_digital_roll_mode)
-                set_digital_dpad("down", false);
+            if (g_accel_mode)
+                set_accel_dpad("down", false);
             else {
                 g_cursor_dy = 0;
             }
             break;
         case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
-            if (g_digital_roll_mode)
-                set_digital_dpad("left", false);
+            if (g_accel_mode)
+                set_accel_dpad("left", false);
             else {
                 g_cursor_dx = 0;
             }
             break;
         case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
-            if (g_digital_roll_mode)
-                set_digital_dpad("right", false);
+            if (g_accel_mode)
+                set_accel_dpad("right", false);
             else {
                 g_cursor_dx = 0;
             }
+            break;
+        case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+            set_strafe_touch(true, false);
+            break;
+        case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+            set_strafe_touch(false, false);
             break;
         default:
             break;
@@ -532,7 +471,7 @@ bool katamari_input_event(const SDL_Event *event)
             break;
         switch (event->key.keysym.sym) {
         case SDLK_ESCAPE:
-            release_virtual_touches();
+            release_strafe_touches();
             return false;
         case SDLK_RETURN:
         case SDLK_SPACE:
@@ -594,24 +533,7 @@ bool katamari_input_event(const SDL_Event *event)
 void katamari_input_tick(long frame)
 {
     open_controller();
-    if (g_controller) {
-        g_lx = SDL_GameControllerGetAxis(g_controller, SDL_CONTROLLER_AXIS_LEFTX);
-        g_ly = SDL_GameControllerGetAxis(g_controller, SDL_CONTROLLER_AXIS_LEFTY);
-        g_rx = SDL_GameControllerGetAxis(g_controller, SDL_CONTROLLER_AXIS_RIGHTX);
-        g_ry = SDL_GameControllerGetAxis(g_controller, SDL_CONTROLLER_AXIS_RIGHTY);
-    }
-
-    if (g_digital_roll_mode) {
-        set_virtual_stick(true,
-                          digital_axis(g_dpad_left, g_dpad_right),
-                          digital_axis(g_dpad_up, g_dpad_down));
-        set_virtual_stick(false,
-                          digital_axis(g_face_left, g_face_right),
-                          digital_axis(g_face_up, g_face_down));
-    } else {
-        set_virtual_stick(true, axis_value(g_lx), axis_value(g_ly));
-        set_virtual_stick(false, axis_value(g_rx), axis_value(g_ry));
-    }
+    update_strafe_touches();
 
     Uint32 now = SDL_GetTicks();
     float dt = (now - g_cursor_last_ms) / 1000.0f;
@@ -625,7 +547,10 @@ void katamari_input_tick(long frame)
             send_touch(ACTION_MOVE, (int)g_cursor_x, (int)g_cursor_y, g_mouse_id);
     }
 
-    send_accel(0.0, 0.0, 9.8);
+    send_accel(
+        digital_axis(g_accel_dpad_left, g_accel_dpad_right) * 6.0,
+        digital_axis(g_accel_dpad_up, g_accel_dpad_down) * 6.0,
+        9.8);
     if (g_trace_input && g_trigger && g_trigger())
         trace("input: native touch trigger is active at frame %ld", frame);
     autopilot_tick(frame);
@@ -671,27 +596,19 @@ bool katamari_input_inject_control(const char *name, bool down)
         return false;
 
     if (!strcmp(name, "a") || !strcmp(name, "x")) {
-        if (g_digital_roll_mode)
-            set_digital_face(name, down);
-        else
-            katamari_input_cursor_press(down);
+        katamari_input_cursor_press(down);
         return true;
     }
     if (!strcmp(name, "b")) {
-        if (g_digital_roll_mode)
-            set_digital_face(name, down);
-        else if (down) {
-            send_key(KEYCODE_BACK, ACTION_DOWN);
-            send_key(KEYCODE_BACK, ACTION_UP);
-        }
+        trace("input: B ignored (Android back is unbound)");
         return true;
     }
     if (!strcmp(name, "start")) {
         if (down) {
-            release_virtual_touches();
-            if (g_digital_roll_mode) {
-                clear_digital_directions();
-                g_digital_roll_mode = false;
+            release_strafe_touches();
+            if (g_accel_mode) {
+                clear_accel_directions();
+                g_accel_mode = false;
             }
             tap_game_pause();
             show_cursor();
@@ -705,15 +622,14 @@ bool katamari_input_inject_control(const char *name, bool down)
         }
         return true;
     }
-    if (!strcmp(name, "y")) {
-        if (g_digital_roll_mode)
-            set_digital_face(name, down);
+    if (!strcmp(name, "y") || !strcmp(name, "l3") ||
+        !strcmp(name, "r3")) {
         return true;
     }
     if (!strcmp(name, "up") || !strcmp(name, "down") ||
         !strcmp(name, "left") || !strcmp(name, "right")) {
-        if (g_digital_roll_mode) {
-            set_digital_dpad(name, down);
+        if (g_accel_mode) {
+            set_accel_dpad(name, down);
             return true;
         }
         if (!down) {
@@ -745,36 +661,15 @@ bool katamari_input_inject_control(const char *name, bool down)
     }
     if (!strcmp(name, "r2")) {
         if (down)
-            toggle_digital_roll_mode();
+            toggle_accel_mode();
         return true;
     }
     if (!strcmp(name, "l1")) {
-        if (down)
-            send_accel(-6.0, 0.0, 0.0);
+        set_strafe_touch(true, down);
         return true;
     }
     if (!strcmp(name, "r1")) {
-        if (down)
-            send_accel(6.0, 0.0, 0.0);
-        return true;
-    }
-    if (!strcmp(name, "l3") || !strcmp(name, "r3"))
-        return true;
-    return false;
-}
-
-bool katamari_input_inject_stick(const char *name, float x, float y)
-{
-    if (!name)
-        return false;
-    if (!strcmp(name, "left")) {
-        g_lx = (int16_t)std::lround(std::max(-1.0f, std::min(1.0f, x)) * 32767.0f);
-        g_ly = (int16_t)std::lround(std::max(-1.0f, std::min(1.0f, y)) * 32767.0f);
-        return true;
-    }
-    if (!strcmp(name, "right")) {
-        g_rx = (int16_t)std::lround(std::max(-1.0f, std::min(1.0f, x)) * 32767.0f);
-        g_ry = (int16_t)std::lround(std::max(-1.0f, std::min(1.0f, y)) * 32767.0f);
+        set_strafe_touch(false, down);
         return true;
     }
     return false;

@@ -2,7 +2,8 @@
 
 This is the interactive qemu-arm/Mesa development harness for the Katamari
 native host. It keeps the original ARM game loop alive and exposes a small
-file-backed control channel for touch, buttons, sticks, screenshots, and quit.
+file-backed control channel for touch, buttons, accelerometer mode, screenshots,
+and quit.
 The APK and game data are never included in the repository or sent through the
 control channel.
 
@@ -49,10 +50,12 @@ Examples:
 ./emulator/send.sh click up
 ./emulator/send.sh button start down
 ./emulator/send.sh button start up
-./emulator/send.sh button l2 down   # simulated tilt
+./emulator/send.sh button l2 down   # flip 180
 ./emulator/send.sh button l2 up
-./emulator/send.sh stick left 1 0
-./emulator/send.sh stick left 0 0
+./emulator/send.sh button r2 down   # D-pad accelerometer mode
+./emulator/send.sh button left down
+./emulator/send.sh button left up
+./emulator/send.sh button r2 up
 ./emulator/send.sh screenshot gameplay
 ./emulator/send.sh quit
 ```
@@ -65,13 +68,12 @@ The bridge maps controls as follows:
 
 - D-pad: move the software touch pointer
 - A/X: touch at the pointer
-- B: Android back
+- B: unbound; Android Back is not sent
 - Select: native Android select key
-- Left/right sticks: virtual touch sticks for rolling
-- L1/R1: simulated accelerometer tilt
+- L1/R1: hold a touch at the left/right screen edge to strafe
 - L2: tap the in-game reverse/turn control
-- R2: toggle digital rolling mode; D-pad becomes the left virtual stick and
-  X/B/A/Y become the right virtual stick (up/right/down/left)
+- R2: toggle accelerometer mode; the D-pad supplies tilt movement
+- Analog sticks: unused; movement uses the accelerometer path
 - Start: tap the in-game pause button directly and show the pointer
 - Mouse events: direct touch input when a windowed SDL driver is available
 
@@ -84,7 +86,7 @@ touch event and the native touch queue while diagnosing input. Use
 
 The server uses only Python's standard library and speaks MCP JSON-RPC over
 stdio. Its tools are `start_emulator`, `stop_emulator`, `emulator_status`,
-`move_cursor`, `click`, `press_control`, `set_stick`, `capture_screen`, and
+`move_cursor`, `click`, `press_control`, `capture_screen`, and
 `read_emulator_log`.
 
 Run the protocol check with `KATAMARI_GAMEDIR` pointing at a writable extracted
@@ -94,5 +96,5 @@ donor:
 KATAMARI_GAMEDIR=/path/to/katamari ./emulator/smoke_test_mcp.py
 ```
 
-The smoke test starts qemu, sends a stick command, captures a PNG, and stops
-the process it created.
+The smoke test starts qemu, exercises the D-pad accelerometer mode and edge
+touches, captures a PNG, and stops the process it created.
