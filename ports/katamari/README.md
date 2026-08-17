@@ -37,7 +37,7 @@ input service. The port maps handheld controls into those same native calls:
 
 - D-pad: move the on-screen pointer
 - A: tap at the pointer
-- B: rapidly tap at the pointer while held; Android Back is not sent
+- B: rapidly tap screen center while held; Android Back is not sent
 - X or L2: tap the in-game reverse/turn control
 - Y or R2: toggle accelerometer mode
 - Select: native Android select key
