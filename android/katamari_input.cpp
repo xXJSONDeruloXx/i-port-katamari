@@ -54,11 +54,13 @@ static Uint32 g_cursor_last_ms = 0;
 
 static bool g_mouse_down = false;
 static bool g_turbo_down = false;
+static bool g_turbo_touch_down = false;
 static int g_mouse_id = 2;
 static int g_pause_id = 3;
 static int g_reverse_id = 4;
 static int g_strafe_left_id = 5;
 static int g_strafe_right_id = 6;
+static int g_turbo_id = 7;
 static bool g_strafe_left_down = false;
 static bool g_strafe_right_down = false;
 static bool g_autopilot = false;
@@ -157,6 +159,43 @@ static void tap_cursor(bool ensure_visible = true)
     send_touch(ACTION_DOWN, x, y, g_mouse_id);
     send_touch(ACTION_UP, x, y, g_mouse_id);
     trace("input: virtual tap at %d,%d", x, y);
+}
+
+static int screen_center_x(void)
+{
+    return clamp_coordinate((float)g_width * 0.5f, g_width);
+}
+
+static int screen_center_y(void)
+{
+    return clamp_coordinate((float)g_height * 0.5f, g_height);
+}
+
+static void release_turbo_touch(void)
+{
+    if (!g_turbo_touch_down)
+        return;
+
+    send_touch(ACTION_UP, screen_center_x(), screen_center_y(), g_turbo_id);
+    g_turbo_touch_down = false;
+    trace("input: virtual turbo touch released");
+}
+
+static void stop_turbo(void)
+{
+    g_turbo_down = false;
+    release_turbo_touch();
+}
+
+static void tap_turbo_center(void)
+{
+    const int x = screen_center_x();
+    const int y = screen_center_y();
+    send_touch(ACTION_DOWN, x, y, g_turbo_id);
+    g_turbo_touch_down = true;
+    send_touch(ACTION_UP, x, y, g_turbo_id);
+    g_turbo_touch_down = false;
+    trace("input: virtual turbo tap at screen center %d,%d", x, y);
 }
 
 static float normalize_controller_axis(Sint16 value)
@@ -334,6 +373,7 @@ void katamari_input_init(so_module *mod, JNIEnv *env, int width, int height)
     g_r2_trigger_down = false;
     g_last_accel_toggle_ms = 0;
     g_turbo_down = false;
+    g_turbo_touch_down = false;
     g_strafe_left_down = false;
     g_strafe_right_down = false;
 
@@ -374,7 +414,7 @@ bool katamari_input_event(const SDL_Event *event)
     switch (event->type) {
     case SDL_QUIT:
         release_strafe_touches();
-        g_turbo_down = false;
+        stop_turbo();
         return false;
 
     case SDL_CONTROLLERDEVICEADDED:
@@ -420,6 +460,7 @@ bool katamari_input_event(const SDL_Event *event)
             break;
         case SDL_CONTROLLER_BUTTON_START:
             release_strafe_touches();
+            stop_turbo();
             if (g_accel_mode) {
                 clear_accel_directions();
                 g_accel_mode = false;
@@ -493,7 +534,7 @@ bool katamari_input_event(const SDL_Event *event)
             }
             break;
         case SDL_CONTROLLER_BUTTON_B:
-            g_turbo_down = false;
+            stop_turbo();
             trace("input: B turbo up");
             break;
         case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
@@ -513,6 +554,7 @@ bool katamari_input_event(const SDL_Event *event)
         switch (event->key.keysym.sym) {
         case SDLK_ESCAPE:
             release_strafe_touches();
+            stop_turbo();
             return false;
         case SDLK_RETURN:
         case SDLK_SPACE:
@@ -589,7 +631,7 @@ void katamari_input_tick(long frame)
     }
 
     if (g_turbo_down)
-        tap_cursor(false);
+        tap_turbo_center();
 
     const float dpad_drive_axis =
         digital_axis(g_accel_dpad_up, g_accel_dpad_down);
@@ -656,7 +698,13 @@ bool katamari_input_inject_control(const char *name, bool down)
         return true;
     }
     if (!strcmp(name, "b")) {
-        g_turbo_down = down;
+        if (down) {
+            g_turbo_down = true;
+            trace("input: B turbo down");
+        } else {
+            stop_turbo();
+            trace("input: B turbo up");
+        }
         return true;
     }
     if (!strcmp(name, "x")) {
