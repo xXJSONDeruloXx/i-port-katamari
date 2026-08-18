@@ -6,7 +6,10 @@ This port is intended for **I Love Katamari (English)**, the Android/iOS game.
 It uses the Android version, whose file must be named
 `MMkatamari-englishhack.apk`.
 
-I can not help you find this file, you're on your own
+The expected SHA256 Hash of the APK should be:
+`9f6017ec0eea700e47147f9bc3ed7502d073a103103141d5c556e3e8cb4092c7`
+
+I can not help you find this file.
 
 ## Install
 
@@ -15,7 +18,7 @@ I can not help you find this file, you're on your own
    directory.
 3. Copy `MMkatamari-englishhack.apk` into `ports/katamari/`.
 4. Copy `Katamari.sh` into `ROMS/PORTS/`.
-5. Launch I Love Katamari from the frontend.
+5. Launch I Love Katamari from your ports directory of your SBC's firmware.
 
 
 ## Controls
@@ -26,18 +29,12 @@ I can not help you find this file, you're on your own
 | B | Tap the screen center (rapid press to boost roll) |
 | X | Tap reverse/180 |
 | L2 | Tap reverse/180 |
-| Y | Toggle accelerometer mode |
-| R2 | Toggle accelerometer mode |
+| Y/R2 | Mode shift Dpad to control Katamari |
 | D-pad in accelerometer mode | Roll/tilt the katamari |
 | L1 | Strafe left while held |
 | R1 | Strafe right while held |
 | Start | Pause through the in-game pause button |
 
+Tested on an RG28XX running MuOS, leveraging mode shift for switching D pad from cursor to acting as accelerometer. 
 
-D-pad moves the pointer; A taps; B taps screen center once per press; X
-and L2 tap the in-game reverse/turn control; and Select sends Android select.
-L1/R1 hold a touch at the left/right screen edge for strafing. Start pauses
-through the in-game button. Y and R2 toggle accelerometer mode, where the
-D-pad or left analog stick supplies tilt movement.
-
-Tested on an RG28XX running MuOS, leveraging mode shift for switching D pad from cursor to acting as accelerometer. YMMV on devices with an analogue stick
+YMMV on devices with an analogue stick.
