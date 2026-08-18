@@ -1,6 +1,6 @@
 # i-port-katamari
 
-[![i-port-katamari demo](assets/i-port-katamari-demo.gif)](assets/i-port-katamari-demo.mp4)
+![i-port-katamari demo](assets/i-port-katamari-demo.gif)
 
 I Love Katamari ported for sbc handhelds via portmaster, with controller first optimizations.
 
