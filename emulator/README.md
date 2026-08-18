@@ -68,7 +68,7 @@ The bridge maps controls as follows:
 
 - D-pad: move the software touch pointer
 - A: touch at the pointer
-- B: rapidly tap screen center while held; Android Back is not sent
+- B: tap screen center once per press
 - X/L2: tap the in-game reverse/turn control
 - Y/R2: toggle accelerometer mode
 - Select: native Android select key

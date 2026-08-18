@@ -37,7 +37,7 @@ Releases are at
 
 ## Controls
 
-D-pad moves the pointer; A taps; B rapidly taps screen center while held; X
+D-pad moves the pointer; A taps; B taps screen center once per press; X
 and L2 tap the in-game reverse/turn control; and Select sends Android select.
 L1/R1 hold a touch at the left/right screen edge for strafing. Start pauses
 through the in-game button. Y and R2 toggle accelerometer mode, where the
