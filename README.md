@@ -1,26 +1,12 @@
 # i-port-katamari
 
-I Love Katamari running its original ARMv5 Android engine on Linux/ARM
-handhelds through a native ELF/JNI/GLES host. The repository contains the
-loader, SDL input/audio bridge, APK data importer, emulator tools, and
-PortMaster packaging. It does not contain the APK or proprietary game data.
-
-## Build
-
-```bash
-docker build -t katamari-build -f Dockerfile.build .
-docker run --rm -v "$PWD":/src -w /src katamari-build make -j4
-docker run --rm -v "$PWD":/src -w /src katamari-build make libs
-bash package_portmaster.sh
-```
-
-The game-data-free package is written to `build/katamari-portmaster.zip`.
-
-## Supported game version
+I Love Katamari ported for sbc handhelds via portmaster, with controller first optimizations.
 
 This port is intended for **I Love Katamari (English)**, the Android/iOS game.
 It uses the Android version, whose file must be named
 `MMkatamari-englishhack.apk`.
+
+I can not help you find this file, you're on your own
 
 ## Install
 
@@ -29,13 +15,24 @@ It uses the Android version, whose file must be named
    directory.
 3. Copy `MMkatamari-englishhack.apk` into `ports/katamari/`.
 4. Copy `Katamari.sh` into `ROMS/PORTS/`.
-5. Launch I Love Katamari from the frontend. The first launch validates and
-   imports the APK data.
+5. Launch I Love Katamari from the frontend.
 
-Releases are at
-<https://github.com/xXJSONDeruloXx/i-port-katamari/releases>.
 
 ## Controls
+| Control | Action |
+|---|---|
+| D-pad | Move the on-screen pointer |
+| A | Tap at the pointer |
+| B | Tap the screen center once per press |
+| X | Tap the reverse/turn control |
+| L2 | Tap the reverse/turn control |
+| Y | Toggle accelerometer mode |
+| R2 | Toggle accelerometer mode |
+| D-pad in accelerometer mode | Roll/tilt the katamari |
+| L1 | Strafe left while held |
+| R1 | Strafe right while held |
+| Start | Pause through the in-game pause button |
+
 
 D-pad moves the pointer; A taps; B taps screen center once per press; X
 and L2 tap the in-game reverse/turn control; and Select sends Android select.
@@ -43,4 +40,4 @@ L1/R1 hold a touch at the left/right screen edge for strafing. Start pauses
 through the in-game button. Y and R2 toggle accelerometer mode, where the
 D-pad or left analog stick supplies tilt movement.
 
-For the qemu/Mesa harness, see [`emulator/README.md`](emulator/README.md).
+Tested on an RG28XX running MuOS, leveraging mode shift for switching D pad from cursor to acting as accelerometer. YMMV on devices with an analogue stick
