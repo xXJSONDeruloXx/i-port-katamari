@@ -39,3 +39,6 @@ I can not help you find this file.
 Tested on an RG28XX running MuOS, leveraging mode shift for switching D pad from cursor to acting as accelerometer. 
 
 YMMV on devices with an analogue stick.
+
+## Credit
+Based on/built atop a fork of https://github.com/EapRules/deadspace-native-arm
