@@ -28,6 +28,7 @@ RUN dpkg --add-architecture armhf && \
         libzip-dev:armhf \
         libbsd-dev:armhf \
         libmpg123-dev:armhf \
+        libvorbis-dev:armhf \
         qemu-user \
         libgles1:armhf \
         libegl-dev:armhf \

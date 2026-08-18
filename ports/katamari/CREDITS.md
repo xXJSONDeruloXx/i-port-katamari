@@ -5,6 +5,7 @@
   Vita so-loader work
 - Fixed-function texture decoder: Imagination Technologies PowerVR SDK
 - MP3 decoder: mpg123, packaged from Debian armhf
+- Ogg Vorbis decoder: libvorbisfile, packaged from Debian armhf
 - Port runtime and controller bridge: EapRules
 
 The game APK and its assets remain the user's responsibility and are not part
