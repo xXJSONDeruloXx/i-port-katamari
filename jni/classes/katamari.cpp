@@ -15,6 +15,7 @@
 
 #include <SDL2/SDL.h>
 #include <mpg123.h>
+#include <vorbis/vorbisfile.h>
 
 #include "fix_path.h"
 #include "trace.h"
@@ -214,6 +215,7 @@ static void trace_asset(const char *operation, const char *name,
 
 struct AudioSlot {
     bool allocated = false;
+    bool decoded = false;
     bool playing = false;
     bool loop = false;
     int next = -1;
@@ -223,8 +225,72 @@ struct AudioSlot {
     std::vector<int16_t> pcm;
 };
 
-static AudioSlot g_audio[128];
-static int g_next_audio_id = 0;
+static constexpr int kAudioSlotCount = 128;
+static constexpr int kRawSoundCount = 52;
+static constexpr int kDynamicAudioBase = 64;
+
+/* AudioTool.m_sndIDList in the donor APK, in its original index order.
+ * This is intentionally not the resource declaration order. */
+static const char *const kRawSoundNames[] = {
+    "kd_se_common_00.ogg",
+    "kd_se_common_01.ogg",
+    "kd_se_common_02.ogg",
+    "kd_se_game_21.ogg",
+    "kd_se_oujih_00.ogg",
+    "kd_se_oujih_01.ogg",
+    "kd_se_game_00.ogg",
+    "kd_se_game_01.ogg",
+    "kd_se_game_02.ogg",
+    "kd_se_game_03.ogg",
+    "kd_se_game_04.ogg",
+    "kd_se_game_05.ogg",
+    "kd_se_game_06.ogg",
+    "kd_se_game_07.ogg",
+    "kd_se_game_08.ogg",
+    "kd_se_game_09.ogg",
+    "kd_se_game_10.ogg",
+    "kd_se_game_11.ogg",
+    "kd_se_game_12.ogg",
+    "kd_se_game_13.ogg",
+    "kd_se_game_14.ogg",
+    "kd_se_game_15.ogg",
+    "kd_se_game_16.ogg",
+    "kd_se_game_17.ogg",
+    "kd_se_game_18.ogg",
+    "kd_se_game_19.ogg",
+    "kd_se_game_20.ogg",
+    "kd_se_game_27.ogg",
+    "kd_se_game_28.ogg",
+    "kd_se_game_29.ogg",
+    "kd_se_game_30.ogg",
+    "kd_se_res_00.ogg",
+    "kd_se_res_01.ogg",
+    "kd_se_over_00.ogg",
+    "kd_se_over_00_2.ogg",
+    "kd_se_over_01.ogg",
+    "kd_se_mono_00.ogg",
+    "kd_se_mono_10.ogg",
+    "kd_se_mono_11.ogg",
+    "kd_se_mono_12.ogg",
+    "kd_se_mono_13.ogg",
+    "kd_se_mono_14.ogg",
+    "kd_se_mono_15.ogg",
+    "kd_se_mono_16.ogg",
+    "kd_se_mono_17.ogg",
+    "kd_se_mono_18.ogg",
+    "kd_se_mono_19.ogg",
+    "kd_se_mono_20.ogg",
+    "kd_se_mono_21.ogg",
+    "kd_se_mono_22.ogg",
+    "kd_se_mono_23.ogg",
+    "kd_se_mono_24.ogg",
+};
+
+static_assert((int)(sizeof(kRawSoundNames) / sizeof(kRawSoundNames[0])) ==
+              kRawSoundCount);
+
+static AudioSlot g_audio[kAudioSlotCount];
+static int g_next_audio_id = kDynamicAudioBase;
 static float g_sfx_volume = 1.0f;
 static long g_asset_reads = 0;
 static unsigned int g_audio_events = 0;
@@ -246,9 +312,16 @@ static void trace_audio(const char *operation, jint id, const char *name = NULL)
 
 static AudioSlot *audio_slot(jint id)
 {
-    if (id < 0 || id >= (jint)(sizeof(g_audio) / sizeof(g_audio[0])))
+    if (id < 0 || id >= kAudioSlotCount)
         return NULL;
     return &g_audio[id];
+}
+
+static const char *raw_sound_name(jint id)
+{
+    if (id < 0 || id >= kRawSoundCount)
+        return NULL;
+    return kRawSoundNames[id];
 }
 
 static void audio_lock(void)
@@ -459,6 +532,54 @@ static bool load_mp3(const char *path, std::vector<int16_t> *output)
     return okay;
 }
 
+static bool load_ogg(const char *path, std::vector<int16_t> *output)
+{
+    OggVorbis_File decoder;
+    memset(&decoder, 0, sizeof(decoder));
+    int error = ov_fopen(path, &decoder);
+    if (error != 0) {
+        trace("katamari ogg open failed for '%s' (vorbis %d)", path, error);
+        return false;
+    }
+
+    bool okay = false;
+    int decode_error = 0;
+    vorbis_info *info = ov_info(&decoder, -1);
+    if (info && info->rate > 0 && info->channels > 0 && info->channels <= 255) {
+        std::vector<Uint8> decoded;
+        char block[16384];
+        int bitstream = 0;
+        for (;;) {
+            long received = ov_read(&decoder, block, sizeof(block), 0, 2, 1,
+                                    &bitstream);
+            if (received == 0)
+                break;
+            if (received < 0) {
+                decode_error = (int)received;
+                break;
+            }
+            decoded.insert(decoded.end(), block, block + received);
+        }
+
+        if (decode_error == 0 && !decoded.empty() &&
+            decoded.size() <= (size_t)UINT32_MAX) {
+            SDL_AudioSpec source;
+            SDL_zero(source);
+            source.freq = info->rate;
+            source.channels = (Uint8)info->channels;
+            source.format = AUDIO_S16LSB;
+            okay = convert_audio(source, decoded.data(),
+                                 (Uint32)decoded.size(), output);
+        }
+    }
+
+    ov_clear(&decoder);
+    if (!okay)
+        trace("katamari ogg decode failed for '%s' (vorbis %d)", path,
+              decode_error);
+    return okay;
+}
+
 static bool load_sound(const char *name, std::vector<int16_t> *output)
 {
     char path[PATH_MAX];
@@ -473,6 +594,8 @@ static bool load_sound(const char *name, std::vector<int16_t> *output)
                     ? load_wav(path, output)
                     : extension && strcasecmp(extension, ".mp3") == 0
                     ? load_mp3(path, output)
+                    : extension && strcasecmp(extension, ".ogg") == 0
+                    ? load_ogg(path, output)
                     : false;
     if (okay) {
         trace("katamari audio loaded '%s' (%zu frames)", name,
@@ -562,11 +685,34 @@ void AudioTool::addSound(JNIEnv *env, jclass clazz, jint id)
 {
     (void)env;
     (void)clazz;
+    const char *name = raw_sound_name(id);
+
     audio_lock();
     AudioSlot *slot = audio_slot(id);
+    if (!slot) {
+        audio_unlock();
+        return;
+    }
+    if (!name || slot->decoded) {
+        slot->allocated = true;
+        trace_audio("addSound", id, name);
+        audio_unlock();
+        return;
+    }
+    slot->allocated = true;
+    audio_unlock();
+
+    std::vector<int16_t> pcm;
+    bool okay = load_sound(name, &pcm);
+
+    audio_lock();
+    slot = audio_slot(id);
     if (slot) {
         slot->allocated = true;
-        trace_audio("addSound", id);
+        slot->decoded = okay && !pcm.empty();
+        slot->pcm = std::move(pcm);
+        snprintf(slot->name, sizeof(slot->name), "%s", name);
+        trace_audio("addSound", id, slot->name);
     }
     audio_unlock();
 }
@@ -578,7 +724,7 @@ void AudioTool::deallocAll(JNIEnv *env, jclass clazz)
     audio_lock();
     for (AudioSlot &slot : g_audio)
         slot = AudioSlot{};
-    g_next_audio_id = 0;
+    g_next_audio_id = kDynamicAudioBase;
     audio_unlock();
 }
 
@@ -620,11 +766,14 @@ jint AudioTool::newID(JNIEnv *env, jclass clazz)
     (void)env;
     (void)clazz;
     audio_lock();
-    for (size_t i = 0; i < sizeof(g_audio) / sizeof(g_audio[0]); i++) {
-        int id = (g_next_audio_id + (int)i) % (int)(sizeof(g_audio) / sizeof(g_audio[0]));
+    const int dynamic_count = kAudioSlotCount - kDynamicAudioBase;
+    for (int i = 0; i < dynamic_count; i++) {
+        int id = kDynamicAudioBase +
+                 ((g_next_audio_id - kDynamicAudioBase + i) % dynamic_count);
         if (!g_audio[id].allocated) {
             g_audio[id].allocated = true;
-            g_next_audio_id = (id + 1) % (int)(sizeof(g_audio) / sizeof(g_audio[0]));
+            g_next_audio_id = id + 1 < kAudioSlotCount
+                                  ? id + 1 : kDynamicAudioBase;
             trace_audio("newID", id);
             audio_unlock();
             return id;
@@ -755,6 +904,7 @@ void AudioTool::setup(JNIEnv *env, jclass clazz, jint id, jstring name,
         slot->loop = loop != 0;
         slot->position = 0;
         slot->pcm = std::move(pcm);
+        slot->decoded = !slot->pcm.empty();
         snprintf(slot->name, sizeof(slot->name), "%s", value ? value : "");
     }
     trace_audio("setup", id, slot->name);
