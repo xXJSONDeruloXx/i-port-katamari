@@ -23,9 +23,9 @@ I can not help you find this file, you're on your own
 |---|---|
 | D-pad | Move the on-screen pointer |
 | A | Tap at the pointer |
-| B | Tap the screen center once per press |
-| X | Tap the reverse/turn control |
-| L2 | Tap the reverse/turn control |
+| B | Tap the screen center (rapid press to boost roll) |
+| X | Tap reverse/180 |
+| L2 | Tap reverse/180 |
 | Y | Toggle accelerometer mode |
 | R2 | Toggle accelerometer mode |
 | D-pad in accelerometer mode | Roll/tilt the katamari |
