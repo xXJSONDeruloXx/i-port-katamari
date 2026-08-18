@@ -53,14 +53,12 @@ static int g_cursor_dy = 0;
 static Uint32 g_cursor_last_ms = 0;
 
 static bool g_mouse_down = false;
-static bool g_turbo_down = false;
-static bool g_turbo_touch_down = false;
 static int g_mouse_id = 2;
 static int g_pause_id = 3;
 static int g_reverse_id = 4;
 static int g_strafe_left_id = 5;
 static int g_strafe_right_id = 6;
-static int g_turbo_id = 7;
+static int g_center_id = 7;
 static bool g_strafe_left_down = false;
 static bool g_strafe_right_down = false;
 static bool g_autopilot = false;
@@ -178,31 +176,13 @@ static int screen_center_y(void)
     return clamp_coordinate((float)g_height * 0.5f, g_height);
 }
 
-static void release_turbo_touch(void)
-{
-    if (!g_turbo_touch_down)
-        return;
-
-    send_touch(ACTION_UP, screen_center_x(), screen_center_y(), g_turbo_id);
-    g_turbo_touch_down = false;
-    trace("input: virtual turbo touch released");
-}
-
-static void stop_turbo(void)
-{
-    g_turbo_down = false;
-    release_turbo_touch();
-}
-
-static void tap_turbo_center(void)
+static void tap_game_center(void)
 {
     const int x = screen_center_x();
     const int y = screen_center_y();
-    send_touch(ACTION_DOWN, x, y, g_turbo_id);
-    g_turbo_touch_down = true;
-    send_touch(ACTION_UP, x, y, g_turbo_id);
-    g_turbo_touch_down = false;
-    trace("input: virtual turbo tap at screen center %d,%d", x, y);
+    send_touch(ACTION_DOWN, x, y, g_center_id);
+    send_touch(ACTION_UP, x, y, g_center_id);
+    trace("input: virtual center tap at %d,%d", x, y);
 }
 
 static float normalize_controller_axis(Sint16 value)
@@ -389,8 +369,6 @@ void katamari_input_init(so_module *mod, JNIEnv *env, int width, int height)
     g_l2_trigger_down = false;
     g_r2_trigger_down = false;
     g_last_accel_toggle_ms = 0;
-    g_turbo_down = false;
-    g_turbo_touch_down = false;
     g_strafe_left_down = false;
     g_strafe_right_down = false;
 
@@ -431,7 +409,6 @@ bool katamari_input_event(const SDL_Event *event)
     switch (event->type) {
     case SDL_QUIT:
         release_strafe_touches();
-        stop_turbo();
         return false;
 
     case SDL_CONTROLLERDEVICEADDED:
@@ -465,8 +442,7 @@ bool katamari_input_event(const SDL_Event *event)
             tap_game_reverse();
             break;
         case SDL_CONTROLLER_BUTTON_B:
-            g_turbo_down = true;
-            trace("input: B turbo down");
+            tap_game_center();
             break;
         case SDL_CONTROLLER_BUTTON_Y:
             toggle_accel_mode();
@@ -477,7 +453,6 @@ bool katamari_input_event(const SDL_Event *event)
             break;
         case SDL_CONTROLLER_BUTTON_START:
             release_strafe_touches();
-            stop_turbo();
             if (g_accel_mode) {
                 clear_accel_directions();
                 g_accel_mode = false;
@@ -550,10 +525,6 @@ bool katamari_input_event(const SDL_Event *event)
                 g_cursor_dx = 0;
             }
             break;
-        case SDL_CONTROLLER_BUTTON_B:
-            stop_turbo();
-            trace("input: B turbo up");
-            break;
         case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
             set_strafe_touch(true, false);
             break;
@@ -571,7 +542,6 @@ bool katamari_input_event(const SDL_Event *event)
         switch (event->key.keysym.sym) {
         case SDLK_ESCAPE:
             release_strafe_touches();
-            stop_turbo();
             return false;
         case SDLK_RETURN:
         case SDLK_SPACE:
@@ -647,9 +617,6 @@ void katamari_input_tick(long frame)
             send_touch(ACTION_MOVE, (int)g_cursor_x, (int)g_cursor_y, g_mouse_id);
     }
 
-    if (g_turbo_down)
-        tap_turbo_center();
-
     /* The Android game rolls from gravity, not from virtual analog sticks.
      * Up/down select the donor's forward/back X tilt; left/right select its
      * lateral Y tilt. A left stick, when present, supplies proportional
@@ -719,13 +686,8 @@ bool katamari_input_inject_control(const char *name, bool down)
         return true;
     }
     if (!strcmp(name, "b")) {
-        if (down) {
-            g_turbo_down = true;
-            trace("input: B turbo down");
-        } else {
-            stop_turbo();
-            trace("input: B turbo up");
-        }
+        if (down)
+            tap_game_center();
         return true;
     }
     if (!strcmp(name, "x")) {
