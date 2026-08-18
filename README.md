@@ -1,5 +1,7 @@
 # i-port-katamari
 
+<video controls width="640" preload="metadata" src="https://raw.githubusercontent.com/xXJSONDeruloXx/i-port-katamari/main/assets/i-port-katamari-demo.mp4"></video>
+
 I Love Katamari ported for sbc handhelds via portmaster, with controller first optimizations.
 
 This port is intended for **I Love Katamari (English)**, the Android/iOS game.
@@ -19,7 +21,6 @@ I can not help you find this file.
 3. Copy `MMkatamari-englishhack.apk` into `ports/katamari/`.
 4. Copy `Katamari.sh` into `ROMS/PORTS/`.
 5. Launch I Love Katamari from your ports directory of your SBC's firmware.
-
 
 ## Controls
 | Control | Action |
