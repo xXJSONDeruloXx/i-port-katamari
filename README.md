@@ -9,7 +9,7 @@ It uses the Android version, whose file must be named
 `MMkatamari-englishhack.apk`.
 
 The expected SHA256 Hash of the APK should be:
-`9f6017ec0eea700e47147f9bc3ed7502d073a103103141d5c556e3e8cb4092c7`
+`b364519c270300065e9f4fd8b9b214e571c74d166b3e8620ade03cdf2122bed2`
 
 I can not help you find this file.
 
