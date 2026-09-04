@@ -10,5 +10,7 @@ bool decode_rgb(const void *data, std::size_t image_size,
                 int width, int height, std::uint8_t *rgba);
 bool decode_rgba_explicit(const void *data, std::size_t image_size,
                           int width, int height, std::uint8_t *rgba);
+bool decode_rgba_interpolated(const void *data, std::size_t image_size,
+                              int width, int height, std::uint8_t *rgba);
 
 } // namespace atc

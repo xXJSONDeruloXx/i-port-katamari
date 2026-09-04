@@ -90,6 +90,44 @@ static void decode_explicit_alpha(const std::uint8_t *src,
     }
 }
 
+/*
+ * ATC interpolated alpha uses the same 64-bit alpha block as BC3/DXT5:
+ * two 8-bit endpoints followed by sixteen little-endian 3-bit selectors.
+ * This equivalence is useful here because Epic Citadel's Android cook may use
+ * either ATC alpha mode, while Mesa/Panfrost generally cannot sample ATC.
+ */
+static void decode_interpolated_alpha(const std::uint8_t *src,
+                                      std::uint8_t *rgba)
+{
+    const std::uint8_t a0 = src[0];
+    const std::uint8_t a1 = src[1];
+    std::uint8_t alpha[8] = {a0, a1, 0, 0, 0, 0, 0, 0};
+
+    if (a0 > a1) {
+        for (int i = 1; i <= 6; ++i)
+            alpha[i + 1] = static_cast<std::uint8_t>(
+                ((7 - i) * static_cast<unsigned>(a0) +
+                 i * static_cast<unsigned>(a1)) / 7);
+    } else {
+        for (int i = 1; i <= 4; ++i)
+            alpha[i + 1] = static_cast<std::uint8_t>(
+                ((5 - i) * static_cast<unsigned>(a0) +
+                 i * static_cast<unsigned>(a1)) / 5);
+        alpha[6] = 0;
+        alpha[7] = 255;
+    }
+
+    std::uint64_t selectors = 0;
+    for (int i = 0; i < 6; ++i)
+        selectors |= static_cast<std::uint64_t>(src[2 + i]) << (8 * i);
+
+    for (int pixel = 0; pixel < 16; ++pixel) {
+        const unsigned index =
+            static_cast<unsigned>((selectors >> (3 * pixel)) & 7u);
+        rgba[pixel * 4 + 3] = alpha[index];
+    }
+}
+
 template <typename BlockDecoder>
 static bool decode_image(const void *data, std::size_t image_size,
                          int width, int height, std::uint8_t *rgba,
@@ -143,6 +181,16 @@ bool decode_rgba_explicit(const void *data, std::size_t image_size,
                         [](const std::uint8_t *src, std::uint8_t *block) {
                             decode_color_block(src + 8, block);
                             decode_explicit_alpha(src, block);
+                        });
+}
+
+bool decode_rgba_interpolated(const void *data, std::size_t image_size,
+                              int width, int height, std::uint8_t *rgba)
+{
+    return decode_image(data, image_size, width, height, rgba, 16,
+                        [](const std::uint8_t *src, std::uint8_t *block) {
+                            decode_color_block(src + 8, block);
+                            decode_interpolated_alpha(src, block);
                         });
 }
 

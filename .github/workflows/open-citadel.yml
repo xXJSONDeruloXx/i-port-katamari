@@ -37,6 +37,10 @@ jobs:
         run: g++ -std=c++20 -O2 -Wall -Wextra -Isrc tools/atc_color_test.cpp src/atc_decompress.cpp -o /tmp/atc_color_test
       - name: Run ATC decoder regression test
         run: /tmp/atc_color_test
+      - name: Build ATC alpha regression test
+        run: g++ -std=c++20 -O2 -Wall -Wextra -Isrc tools/atc_alpha_test.cpp src/atc_decompress.cpp -o /tmp/atc_alpha_test
+      - name: Run ATC alpha regression test
+        run: /tmp/atc_alpha_test
 
   x86-build:
     runs-on: ubuntu-24.04
