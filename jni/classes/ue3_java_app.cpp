@@ -82,13 +82,15 @@ static jstring cb_get_patch_expansion(JNIEnv *, jobject)
 static jint cb_get_performance_level(JNIEnv *, jobject)
 {
     const char *value = std::getenv("OPEN_CITADEL_PERFORMANCE_LEVEL");
-    return value ? std::atoi(value) : 2;
+    /* Epic returns -1 when SharedPreferences has no last-known-good value;
+     * native UE3 then performs its device/performance selection. */
+    return value ? std::atoi(value) : -1;
 }
 
 static jfloat cb_get_resolution_scale(JNIEnv *, jobject)
 {
     const char *value = std::getenv("OPEN_CITADEL_RESOLUTION_SCALE");
-    return value ? static_cast<jfloat>(std::atof(value)) : 1.0f;
+    return value ? static_cast<jfloat>(std::atof(value)) : -1.0f;
 }
 
 static jint cb_get_sdk_version(JNIEnv *, jobject)
