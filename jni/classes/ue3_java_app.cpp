@@ -18,6 +18,7 @@ std::string g_game_dir;
 std::string g_main_obb;
 std::string g_patch_obb;
 std::atomic<int> g_shutdown{0};
+std::atomic<long> g_frames{0};
 UE3JavaApp g_activity;
 std::mutex g_prefs_lock;
 std::unordered_map<std::string, std::string> g_prefs;
@@ -188,6 +189,7 @@ static jboolean cb_swap_buffers(JNIEnv *, jobject)
     if (!g_window)
         return JNI_FALSE;
     SDL_GL_SwapWindow(g_window);
+    g_frames.fetch_add(1, std::memory_order_relaxed);
     return JNI_TRUE;
 }
 
@@ -407,6 +409,7 @@ extern "C" void open_citadel_java_configure(
     g_patch_obb = patch_obb ? patch_obb : "";
     open_citadel_asset_manager_configure(g_game_dir.c_str());
     g_shutdown.store(0, std::memory_order_release);
+    g_frames.store(0, std::memory_order_release);
 }
 
 extern "C" jobject open_citadel_java_activity(void)
@@ -422,4 +425,9 @@ extern "C" int open_citadel_java_shutdown_requested(void)
 extern "C" void open_citadel_java_clear_shutdown(void)
 {
     g_shutdown.store(0, std::memory_order_release);
+}
+
+extern "C" long open_citadel_java_frames_presented(void)
+{
+    return g_frames.load(std::memory_order_acquire);
 }
