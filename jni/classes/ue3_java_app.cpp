@@ -408,6 +408,23 @@ extern "C" void open_citadel_java_configure(
     g_main_obb = main_obb ? main_obb : "";
     g_patch_obb = patch_obb ? patch_obb : "";
     open_citadel_asset_manager_configure(g_game_dir.c_str());
+
+    /* UE3JavaApp.UpdateAppValues() does this before native startup on Android.
+     * FFileManagerAndroid consumes STORAGE_ROOT as its document/app directory,
+     * so use the imported donor directory as the Linux equivalent of
+     * /sdcard/UnrealEngine3/. */
+    {
+        std::lock_guard<std::mutex> lock(g_prefs_lock);
+        g_prefs.clear();
+        std::string storage = g_game_dir;
+        if (!storage.empty() && storage.back() != '/')
+            storage.push_back('/');
+        g_prefs["STORAGE_ROOT"] = storage;
+        g_prefs["BASE_DIR"] = "UnrealEngine3";
+        g_prefs["EXTERNAL_ROOT"] = storage;
+        g_prefs["LOCAL_IP"] = "";
+    }
+
     g_shutdown.store(0, std::memory_order_release);
     g_frames.store(0, std::memory_order_release);
 }
