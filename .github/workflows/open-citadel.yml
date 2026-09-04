@@ -55,7 +55,7 @@ jobs:
       - name: Install 32-bit build/runtime dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++-multilib libc6-dev-i386 libsdl2-dev:i386 zlib1g-dev:i386 libbsd-dev:i386
+          sudo apt-get install -y g++-multilib libc6-dev-i386 libsdl2-dev:i386 zlib1g-dev:i386 libbsd-dev:i386 qemu-user
       - name: Verify 32-bit SDL
         env:
           PKG_CONFIG_LIBDIR: /usr/lib/i386-linux-gnu/pkgconfig:/usr/share/pkgconfig
@@ -120,7 +120,34 @@ jobs:
 
           cp -L /usr/lib/i386-linux-gnu/libEGL.so.1 "$out/lib/"
           cp -L /usr/lib/i386-linux-gnu/libGLESv2.so.2 "$out/lib/"
-          file "$out/open-citadel-x86" "$out/ld-linux.so.2"
+
+          # The ChatGPT execution sandbox used for private-donor testing has
+          # an x86_64 kernel with IA32 execution disabled. Package qemu-i386
+          # and its host-side dependencies so the exact CI-built guest host can
+          # still be exercised locally without publishing Epic's donor.
+          qemu="$(command -v qemu-i386)"
+          mkdir -p "$out/qemu-lib"
+          cp -L "$qemu" "$out/qemu-i386"
+          pending="$qemu"
+          seen=""
+          while [ -n "$pending" ]; do
+            next=""
+            for obj in $pending; do
+              case " $seen " in *" $obj "*) continue ;; esac
+              seen="$seen $obj"
+              for dep in $(ldd "$obj" 2>/dev/null | awk '/=> \/|^\// {for(i=1;i<=NF;i++) if($i ~ /^\//) print $i}'); do
+                case "$dep" in
+                  /lib/x86_64-linux-gnu/*|/usr/lib/x86_64-linux-gnu/*)
+                    cp -Lf "$dep" "$out/qemu-lib/$(basename "$dep")"
+                    ;;
+                esac
+                case " $seen " in *" $dep "*) ;; *) next="$next $dep" ;; esac
+              done
+            done
+            pending="$next"
+          done
+
+          file "$out/open-citadel-x86" "$out/ld-linux.so.2" "$out/qemu-i386"
           du -sh "$out"
       - name: Upload portable i386 host
         uses: actions/upload-artifact@v4
