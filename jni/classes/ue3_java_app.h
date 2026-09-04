@@ -41,6 +41,7 @@ void open_citadel_java_configure(SDL_Window *window, SDL_GLContext context,
 jobject open_citadel_java_activity(void);
 int open_citadel_java_shutdown_requested(void);
 void open_citadel_java_clear_shutdown(void);
+long open_citadel_java_frames_presented(void);
 
 #ifdef __cplusplus
 }
