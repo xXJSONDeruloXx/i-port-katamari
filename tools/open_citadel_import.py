@@ -196,13 +196,20 @@ def import_xapk(xapk: Path, destination: Path) -> None:
             scratch = staging / ".donor"
             scratch.mkdir()
             apk = scratch / "EpicCitadel.apk"
-            obb = scratch / OBB_NAME
+            obb_dir = staging / "obb"
+            obb_dir.mkdir()
+            obb = obb_dir / OBB_NAME
             with z.open(apk_member) as src, apk.open("wb") as fp:
                 shutil.copyfileobj(src, fp, 1024 * 1024)
             with z.open(obb_member) as src, obb.open("wb") as fp:
                 shutil.copyfileobj(src, fp, 1024 * 1024)
 
         extract_native_apk(apk, staging)
+        # Keep the original OBB. FFileManagerAndroid natively opens the path
+        # returned by JavaCallback_GetMainAPKExpansionName and parses this same
+        # UE3AndroidOBB table, which is a lower-risk runtime path than replacing
+        # Epic's file manager. The expanded tree remains useful for diagnostics
+        # and for a future no-container mode.
         extracted = extract_ue3_obb(obb, staging)
         if not (staging / "UDKGame" / "AndroidTOC.txt").is_file():
             raise DonorError(
@@ -220,6 +227,7 @@ def import_xapk(xapk: Path, destination: Path) -> None:
             "version_code": VERSION_CODE,
             "native_sha256": NATIVE_SHA256,
             "obb": OBB_NAME,
+            "obb_path": f"obb/{OBB_NAME}",
             "obb_entries": len(extracted),
         }
         (staging / ".open-citadel-donor.json").write_text(
