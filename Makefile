@@ -84,7 +84,6 @@ OC_SRCS := $(foreach d,$(OC_SRCDIRS),$(wildcard $(d)/*.cpp))
 OC_SRCS := $(filter-out \
     src/main.cpp \
     src/symtab.cpp \
-    src/crash.cpp \
     src/gl_diag.cpp \
     src/gl_probe.cpp \
     src/sdl_info.cpp \
