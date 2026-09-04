@@ -138,9 +138,26 @@ static void cb_shutdown(JNIEnv *, jobject)
 static void cb_show_keyboard(JNIEnv *, jobject, jstring, jfloat, jfloat,
                              jfloat, jfloat, jboolean) {}
 
-static void cb_start_video(JNIEnv *, jobject, jobject, jlong, jlong, jboolean)
+static void cb_start_video(JNIEnv *env, jobject activity, jobject,
+                           jlong, jlong, jboolean)
 {
-    /* Video is deliberately skipped during initial native bring-up. */
+    /*
+     * Until Linux video presentation is wired, skipping must still obey the
+     * Android lifecycle contract. FAndroidFullScreenMovie sets
+     * bIsMoviePlaying before calling Java and GameThreadWaitForMovie blocks
+     * until Java reports completion through NativeCallback_MovieFinished().
+     * Returning silently leaves the engine permanently in its startup-movie
+     * loop after all RHI/shader initialization has succeeded.
+     */
+    using MovieFinished = void (*)(JNIEnv *, jobject);
+    void *registered = jni_find_registered_native(
+        reinterpret_cast<jclass>(&UE3JavaApp::clazz),
+        "NativeCallback_MovieFinished", "()V");
+    trace("OpenCitadel: skipping movie and reporting completion");
+    if (registered)
+        reinterpret_cast<MovieFinished>(registered)(env, activity);
+    else
+        trace("OpenCitadel: NativeCallback_MovieFinished was not registered");
 }
 
 static void cb_video_text(JNIEnv *, jobject, jstring) {}
