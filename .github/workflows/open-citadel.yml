@@ -90,7 +90,7 @@ jobs:
           # SDL loads EGL/GLES and Mesa's DRI driver dynamically, so ldd on
           # the executable alone is not enough. Seed those objects explicitly,
           # then recursively collect every absolute dependency they report.
-          seeds="build/open-citadel-x86 /usr/lib/i386-linux-gnu/libEGL.so.1 /usr/lib/i386-linux-gnu/libGLESv2.so.2"
+          seeds="build/open-citadel-x86 /usr/lib/i386-linux-gnu/libEGL.so.1 /usr/lib/i386-linux-gnu/libGLESv2.so.2 /usr/lib/i386-linux-gnu/libGL.so.1"
           if [ -f /usr/lib/i386-linux-gnu/dri/swrast_dri.so ]; then
             cp -L /usr/lib/i386-linux-gnu/dri/swrast_dri.so "$out/dri/"
             seeds="$seeds /usr/lib/i386-linux-gnu/dri/swrast_dri.so"
@@ -120,6 +120,7 @@ jobs:
 
           cp -L /usr/lib/i386-linux-gnu/libEGL.so.1 "$out/lib/"
           cp -L /usr/lib/i386-linux-gnu/libGLESv2.so.2 "$out/lib/"
+          cp -L /usr/lib/i386-linux-gnu/libGL.so.1 "$out/lib/"
 
           # The ChatGPT execution sandbox used for private-donor testing has
           # an x86_64 kernel with IA32 execution disabled. Package qemu-i386
