@@ -14,6 +14,7 @@
 #include "jni.h"
 #include "classes/ue3_java_app.h"
 #include "trace.h"
+#include "gles2_probe.h"
 
 extern "C" void android_egl_init(SDL_Window *window, SDL_GLContext gl);
 
@@ -285,7 +286,15 @@ int main(int argc, char **argv)
 
         const long frames = open_citadel_java_frames_presented();
         if (frames != last_reported && (frames <= 5 || frames % 60 == 0)) {
-            fprintf(stderr, "OpenCitadel: presented frames=%ld\n", frames);
+            fprintf(stderr,
+                    "OpenCitadel: frames=%ld draws=%ld textures=%ld atc=%ld "
+                    "shaders=%d/%d programs=%d/%d\n",
+                    frames, open_citadel_gl_draws(),
+                    open_citadel_gl_textures(), open_citadel_gl_atc_decoded(),
+                    open_citadel_gl_shaders_ok(),
+                    open_citadel_gl_shaders_failed(),
+                    open_citadel_gl_programs_ok(),
+                    open_citadel_gl_programs_failed());
             last_reported = frames;
         }
         if (frame_limit > 0 && frames >= frame_limit)
@@ -297,8 +306,13 @@ int main(int argc, char **argv)
         SDL_Delay(8);
     }
 
-    fprintf(stderr, "OpenCitadel: cleanup after %ld presented frame(s)\n",
-            open_citadel_java_frames_presented());
+    fprintf(stderr,
+            "OpenCitadel: cleanup frames=%ld draws=%ld textures=%ld atc=%ld "
+            "shaders=%d/%d programs=%d/%d\n",
+            open_citadel_java_frames_presented(), open_citadel_gl_draws(),
+            open_citadel_gl_textures(), open_citadel_gl_atc_decoded(),
+            open_citadel_gl_shaders_ok(), open_citadel_gl_shaders_failed(),
+            open_citadel_gl_programs_ok(), open_citadel_gl_programs_failed());
     native_cleanup(env, activity);
 
     SDL_GL_MakeCurrent(window, gl);

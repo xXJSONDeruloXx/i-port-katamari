@@ -2,6 +2,7 @@
 
 extern DynLibFunction symtable_libc[];
 extern DynLibFunction symtable_gles2[];
+extern DynLibFunction symtable_open_citadel_gles2_probe[];
 extern DynLibFunction symtable_egl[];
 extern DynLibFunction symtable_log[];
 extern DynLibFunction symtable_android[];
@@ -61,6 +62,8 @@ DynLibFunction *so_dynamic_libraries[] = {
     symtable_log,
     symtable_egl,
     symtable_zlib,
+    /* Probe first so matching GLES2 imports bind to our wrappers. */
+    symtable_open_citadel_gles2_probe,
     symtable_gles2,
     symtable_libm,
     symtable_libc,
