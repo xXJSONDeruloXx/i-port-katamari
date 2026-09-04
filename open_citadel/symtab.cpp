@@ -16,7 +16,9 @@ extern DynLibFunction symtable_io[];
 extern DynLibFunction symtable_unwind[];
 extern DynLibFunction symtable_bionic[];
 extern DynLibFunction symtable_off[];
+#if defined(__arm__)
 extern DynLibFunction symtable_setjmp[];
+#endif
 
 /*
  * Epic Citadel has a much cleaner dependency graph than the Katamari donor:
@@ -44,7 +46,9 @@ DynLibFunction *so_dynamic_libraries[] = {
     symtable_time,
     symtable_pthread,
     symtable_sem,
+#if defined(__arm__)
     symtable_setjmp,
+#endif
     symtable_stat,
     symtable_io,
     symtable_off,
