@@ -85,6 +85,7 @@ OC_SRCS := $(filter-out \
     src/main.cpp \
     src/symtab.cpp \
     src/crash.cpp \
+    src/symtab_setjmp.cpp \
     loader/io_util.cpp \
     android/cursor_draw.cpp \
     android/emulator_control.cpp \
