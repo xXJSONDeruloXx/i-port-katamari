@@ -317,6 +317,10 @@ public:
 
 extern "C" {
     extern void jni_resolve_native(struct so_module *so);
+    /* Runtime RegisterNatives entries, used by engines such as UE3 that do not
+     * expose Java_<class>_<method> names for every callback. */
+    extern void *jni_find_registered_native(jclass clazz, const char *name,
+                                            const char *signature);
 };
 
 /*
