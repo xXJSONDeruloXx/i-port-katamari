@@ -206,7 +206,7 @@ int main(int argc, char **argv)
 
     using InitEGL = jboolean (*)(JNIEnv *, jobject);
     using Initialize = jboolean (*)(JNIEnv *, jobject, jint, jint, jfloat,
-                                    jboolean);
+                                    jboolean, jobject, jboolean);
     using Cleanup = void (*)(JNIEnv *, jobject);
     using PostInit = void (*)(JNIEnv *, jobject, jint, jint);
     using Back = void (*)(void);
@@ -239,7 +239,12 @@ int main(int argc, char **argv)
         fprintf(stderr, "OpenCitadel: context release warning: %s\n",
                 SDL_GetError());
 
-    if (!native_initialize(env, activity, width, height, 1.0f, JNI_FALSE)) {
+    /* The exported C++ helper carries two legacy parameters that are not
+     * present in the Java declaration (IIFZ)Z. The 1.07 implementation only
+     * consumes env/activity/width/height, but match its actual native ABI so
+     * both i386 cdecl and ARM softfp calls remain well-defined. */
+    if (!native_initialize(env, activity, width, height, 1.0f, JNI_FALSE,
+                           nullptr, JNI_FALSE)) {
         fprintf(stderr, "OpenCitadel: NativeCallback_Initialize failed\n");
         return 1;
     }
