@@ -14,6 +14,7 @@
 #include "jni.h"
 #include "classes/ue3_java_app.h"
 #include "trace.h"
+#include "crash.h"
 #include "gles2_probe.h"
 
 extern "C" void android_egl_init(SDL_Window *window, SDL_GLContext gl);
@@ -49,6 +50,12 @@ static int report_unresolved_symbols(so_module *mod)
 extern "C" int so_after_relocate(so_module *mod)
 {
     g_module = mod;
+
+    /* Called before the loader executes .init_array, so constructor faults are
+     * reported with guest-relative PCs instead of disappearing into a bare
+     * SIGSEGV. */
+    crash_report_init(mod, "libUnrealEngine3.so");
+
     const int missing = report_unresolved_symbols(mod);
     if (missing)
         fprintf(stderr, "OpenCitadel: %d unresolved import(s)\n", missing);
