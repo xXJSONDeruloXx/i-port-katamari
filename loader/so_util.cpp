@@ -544,6 +544,16 @@ void plt0_stub()
 #elif defined(__arm__)
     register uintptr_t got0 asm("r12");
     reloc_err(got0);
+#elif defined(__i386__)
+    /*
+     * i386 PLT does not preserve the relocation slot in a dedicated scratch
+     * register the way our ARM stubs do. Open Citadel audits every undefined
+     * symbol before running constructors, so reaching this is necessarily a
+     * missed audit/late lookup. Fail deterministically rather than jumping
+     * through address zero.
+     */
+    fatal_error("Unresolved i386 PLT symbol invoked.\n");
+    exit(-1);
 #else
     #error Implement me
 #endif
