@@ -113,7 +113,9 @@ void bionic_longjmp(void *env, int value);
  * sp because putting sp in an stm register list is deprecated from ARMv7 on
  * and assembles to a warning on this toolchain.
  */
-#if defined(__arm__)\n\nasm(
+#if defined(__arm__)
+
+asm(
     ".text\n"
     ".align  2\n"
     ".arm\n"
