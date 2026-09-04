@@ -84,6 +84,7 @@ OC_SRCS := $(foreach d,$(OC_SRCDIRS),$(wildcard $(d)/*.cpp))
 OC_SRCS := $(filter-out \
     src/main.cpp \
     src/symtab.cpp \
+    loader/io_util.cpp \
     android/cursor_draw.cpp \
     android/emulator_control.cpp \
     android/fb_probe.cpp \
