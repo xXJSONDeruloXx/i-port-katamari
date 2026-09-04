@@ -858,8 +858,17 @@ int so_static_overrides(so_module *mod) {
 }
 
 void so_initialize(so_module *mod) {
+  const bool trace_init = getenv("OPEN_CITADEL_TRACE_INIT_ARRAY") != NULL;
+  if (trace_init)
+    fprintf(stderr, "loader: running %d init_array entries for %s\n",
+            mod->num_init_array, mod->soname ? mod->soname : "<module>");
+
   for (int i = 0; i < mod->num_init_array; i++) {
     if (mod->init_array[i]) {
+      if (trace_init)
+        fprintf(stderr, "loader: init_array[%d/%d] = %p (module+0x%08lx)\n",
+                i, mod->num_init_array, (void *)mod->init_array[i],
+                (unsigned long)((uintptr_t)mod->init_array[i] - mod->base));
       mod->init_array[i]();
     }
   }
