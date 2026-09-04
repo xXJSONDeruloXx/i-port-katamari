@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 import io
+import hashlib
 from pathlib import Path
 import struct
 import sys
 import tempfile
 import unittest
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -34,6 +36,36 @@ def make_obb(path: Path, files):
 
 
 class OpenCitadelObbTests(unittest.TestCase):
+    def test_extracts_both_guest_abis(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            apk = root / "donor.apk"
+            arm = b"arm-ue3-fixture"
+            x86 = b"x86-ue3-fixture"
+            with zipfile.ZipFile(apk, "w") as z:
+                z.writestr(oc.NATIVE_PATH, arm)
+                z.writestr(oc.X86_NATIVE_PATH, x86)
+                z.writestr("assets/UE3CommandLine.txt", b"EpicCitadel.udk")
+
+            original = oc.NATIVE_LIBRARIES
+            try:
+                oc.NATIVE_LIBRARIES = {
+                    oc.NATIVE_PATH: hashlib.sha256(arm).hexdigest(),
+                    oc.X86_NATIVE_PATH: hashlib.sha256(x86).hexdigest(),
+                }
+                out = root / "out"
+                selected = oc.extract_native_apk(apk, out)
+            finally:
+                oc.NATIVE_LIBRARIES = original
+
+            self.assertEqual(selected, out / oc.NATIVE_PATH)
+            self.assertEqual((out / oc.NATIVE_PATH).read_bytes(), arm)
+            self.assertEqual((out / oc.X86_NATIVE_PATH).read_bytes(), x86)
+            self.assertEqual(
+                (out / "assets" / "UE3CommandLine.txt").read_bytes(),
+                b"EpicCitadel.udk",
+            )
+
     def test_index_and_extract(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
