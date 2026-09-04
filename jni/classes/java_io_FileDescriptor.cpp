@@ -1,3 +1,5 @@
+#include <new>
+
 #include "jni_internals.h"
 
 namespace {
