@@ -141,6 +141,19 @@ static const char *signal_name(int sig)
  */
 static bool looks_like_return_address(uintptr_t v)
 {
+#if defined(__i386__)
+    const uint8_t *ret = (const uint8_t *)v;
+    if (ret[-5] == 0xE8)
+        return true;  /* CALL rel32 */
+    for (int back = 2; back <= 7; ++back) {
+        if (ret[-back] == 0xFF) {
+            const uint8_t modrm = ret[-back + 1];
+            if (((modrm >> 3) & 7) == 2)
+                return true;  /* CALL r/m32 */
+        }
+    }
+    return false;
+#else
     uint32_t prev = *(const uint32_t *)((v & ~(uintptr_t)1) - 4);
 
     if ((prev & 0x0F000000) == 0x0B000000) return true;  /* BL / BLcond   */
@@ -149,6 +162,7 @@ static bool looks_like_return_address(uintptr_t v)
     if ((prev & 0x0E10F000) == 0x0410F000) return true;  /* ldr pc, [..]  */
 
     return false;
+#endif
 }
 
 static void put_stack(uintptr_t sp)
@@ -166,14 +180,23 @@ static void put_stack(uintptr_t sp)
 
     for (int i = 0; i < max && hits < 24; i++) {
         uintptr_t v = w[i];
+#if defined(__i386__)
+        if (v < g_text_base + 8 || v >= g_text_base + g_text_size)
+            continue;
+#else
         if (v < g_text_base + 4 || v >= g_text_base + g_text_size)
             continue;
+#endif
         if (!looks_like_return_address(v))
             continue;
         put("         ");
         put(g_soname);
         put("+");
+#if defined(__i386__)
+        put_hex(v - g_text_base);
+#else
         put_hex((v & ~(uintptr_t)1) - g_text_base);
+#endif
         put("\n");
         hits++;
     }
