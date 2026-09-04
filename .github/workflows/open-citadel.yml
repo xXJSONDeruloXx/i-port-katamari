@@ -7,14 +7,17 @@ on:
   pull_request:
     paths:
       - "OPEN_CITADEL.md"
+      - "Makefile"
       - "tools/open_citadel_import.py"
       - "tests/test_open_citadel_import.py"
       - "open_citadel/**"
+      - "android/**"
       - "loader/**"
       - "jni/**"
       - "src/**"
       - "thunks/**"
       - ".github/workflows/open-citadel.yml"
+  workflow_dispatch:
 
 jobs:
   donor-tools:
@@ -31,12 +34,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build ATC decoder regression test
-        run: |
-          g++ -std=c++20 -O2 -Wall -Wextra -Isrc             tools/atc_color_test.cpp src/atc_decompress.cpp             -o /tmp/atc_color_test
+        run: g++ -std=c++20 -O2 -Wall -Wextra -Isrc tools/atc_color_test.cpp src/atc_decompress.cpp -o /tmp/atc_color_test
       - name: Run ATC decoder regression test
         run: /tmp/atc_color_test
 
-  x86-prereqs:
+  x86-build:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -45,19 +47,17 @@ jobs:
       - name: Install 32-bit build/runtime dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y             g++-multilib libc6-dev-i386             libsdl2-dev:i386 libgl-dev:i386 libegl-dev:i386 libgles2-mesa-dev:i386             zlib1g-dev:i386 libbsd-dev:i386 libzip-dev:i386
-      - name: Verify 32-bit toolchain
+          sudo apt-get install -y g++-multilib libc6-dev-i386 libsdl2-dev:i386 zlib1g-dev:i386 libbsd-dev:i386 libzip-dev:i386
+      - name: Verify 32-bit SDL
+        env:
+          PKG_CONFIG_LIBDIR: /usr/lib/i386-linux-gnu/pkgconfig:/usr/share/pkgconfig
         run: |
-          cat > /tmp/probe.cpp <<'EOF'
-          #include <SDL2/SDL.h>
-          #include <stdio.h>
-          int main() {
-              SDL_version v;
-              SDL_GetVersion(&v);
-              printf("SDL %u.%u.%u\n", v.major, v.minor, v.patch);
-              return 0;
-          }
-          EOF
+          printf '#include <SDL2/SDL.h>\nint main(){return 0;}\n' > /tmp/probe.cpp
           g++ -m32 /tmp/probe.cpp $(pkg-config --cflags --libs sdl2) -o /tmp/probe32
           file /tmp/probe32
-          /tmp/probe32
+      - name: Build Open Citadel i386 host
+        env:
+          PKG_CONFIG_LIBDIR: /usr/lib/i386-linux-gnu/pkgconfig:/usr/share/pkgconfig
+        run: |
+          make open-citadel-x86 PKG_CONFIG=pkg-config
+          file build/open-citadel-x86
