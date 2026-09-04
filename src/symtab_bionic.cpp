@@ -254,6 +254,49 @@ static_assert(sizeof(struct bionic_dirent) == sizeof(struct dirent64),
  * on the thread that opened it) and the alternative - a lock keyed on DIR* -
  * would serialise nothing real.
  */
+static void convert_dirent64(const struct dirent64 &host,
+                            struct bionic_dirent *entry)
+{
+    entry->d_ino  = (uint64_t)host.d_ino;
+    entry->d_off  = (int64_t)host.d_off;
+    entry->d_type = (uint8_t)host.d_type;
+
+    size_t name_len = strnlen(host.d_name, sizeof(entry->d_name) - 1);
+    memcpy(entry->d_name, host.d_name, name_len);
+    entry->d_name[name_len] = '\0';
+
+    /* Android's record contains 64-bit ino/off even on 32-bit ABIs. Compute
+     * the guest record length from the guest layout, never from glibc's
+     * architecture-dependent struct dirent. */
+    entry->d_reclen = (uint16_t)((offsetof(struct bionic_dirent, d_name)
+                                  + name_len + 1 + 7) & ~(size_t)7);
+}
+
+/*
+ * UE3 1.07 imports readdir(), not just readdir_r(). On 32-bit glibc the plain
+ * struct dirent may use 32-bit ino_t/off_t, while bionic's public dirent has
+ * 64-bit d_ino/d_off. Returning glibc's pointer directly shifts d_name and
+ * makes a successful directory walk look empty to the guest.
+ *
+ * readdir's contract only promises the returned pointer until the next call on
+ * the directory stream; a thread-local converted record is therefore enough
+ * and avoids owning guest-visible heap memory.
+ */
+extern "C" struct bionic_dirent *bionic_readdir(DIR *dir)
+{
+    if (!dir)
+        return NULL;
+
+    errno = 0;
+    struct dirent64 *host = readdir64(dir);
+    if (!host)
+        return NULL;
+
+    static thread_local struct bionic_dirent converted;
+    convert_dirent64(*host, &converted);
+    return &converted;
+}
+
 extern "C" int bionic_readdir_r(DIR *dir, struct bionic_dirent *entry,
                                 struct bionic_dirent **result)
 {
@@ -269,19 +312,7 @@ extern "C" int bionic_readdir_r(DIR *dir, struct bionic_dirent *entry,
         return errno;
     }
 
-    entry->d_ino  = (uint64_t)host->d_ino;
-    entry->d_off  = (int64_t)host->d_off;
-    entry->d_type = (uint8_t)host->d_type;
-
-    size_t name_len = strnlen(host->d_name, sizeof(entry->d_name) - 1);
-    memcpy(entry->d_name, host->d_name, name_len);
-    entry->d_name[name_len] = '\0';
-
-    /* Recomputed for our layout instead of copied: the host's d_reclen counts
-     * the host struct, which is eight bytes shorter here. */
-    entry->d_reclen = (uint16_t)((offsetof(struct bionic_dirent, d_name)
-                                  + name_len + 1 + 7) & ~(size_t)7);
-
+    convert_dirent64(*host, entry);
     *result = entry;
     return 0;
 }
@@ -305,6 +336,7 @@ DynLibFunction symtable_bionic[] = {
     NO_THUNK("tzname",       (uintptr_t)&tzname),
 
     NO_THUNK("fcntl",     (uintptr_t)&bionic_fcntl),
+    NO_THUNK("readdir",   (uintptr_t)&bionic_readdir),
     NO_THUNK("readdir_r", (uintptr_t)&bionic_readdir_r),
 
     { NULL, 0 },
