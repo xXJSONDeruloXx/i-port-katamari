@@ -16,6 +16,28 @@ extern const JNIInvokeInterface jvm_funcs;
 extern const JNINativeInterface jnienv_funcs;
 static JavaVM *jvm_global = NULL;
 
+struct DynamicNativeRegistration {
+    jclass clazz;
+    char *name;
+    char *signature;
+    void *fn;
+};
+
+static std::vector<DynamicNativeRegistration> g_dynamic_natives;
+
+extern "C" void *jni_find_registered_native(jclass clazz, const char *name,
+                                              const char *signature)
+{
+    for (const auto &entry : g_dynamic_natives) {
+        if (entry.clazz == clazz &&
+            name && signature &&
+            strcmp(entry.name, name) == 0 &&
+            strcmp(entry.signature, signature) == 0)
+            return entry.fn;
+    }
+    return NULL;
+}
+
 template <typename T> ABI_ATTR static T iface_CallNonVirtualMethodV(JNIEnv *env, jobject obj, jclass jclazz, jmethodID meth, va_list va);
 template <typename T> ABI_ATTR static T iface_CallNonVirtualMethodA(JNIEnv *env, jobject obj, jclass jclazz, jmethodID meth, const jvalue *val);
 
@@ -567,14 +589,52 @@ ABI_ATTR static void iface_SetObjectArrayElement(JNIEnv *env, jobjectArray jarr,
 ABI_ATTR static jint iface_RegisterNatives(JNIEnv *env, jclass jclazz,
     const JNINativeMethod* methods, jint nMethods)
 {
-    WARN_STUB;
-    return 0;
+    (void)env;
+    if (!jclazz || !methods || nMethods < 0)
+        return JNI_ERR;
+
+    for (jint i = 0; i < nMethods; ++i) {
+        if (!methods[i].name || !methods[i].signature || !methods[i].fnPtr)
+            return JNI_ERR;
+
+        auto it = std::find_if(
+            g_dynamic_natives.begin(), g_dynamic_natives.end(),
+            [&](const DynamicNativeRegistration &entry) {
+                return entry.clazz == jclazz &&
+                       strcmp(entry.name, methods[i].name) == 0 &&
+                       strcmp(entry.signature, methods[i].signature) == 0;
+            });
+        if (it != g_dynamic_natives.end()) {
+            it->fn = methods[i].fnPtr;
+            continue;
+        }
+
+        char *name = strdup(methods[i].name);
+        char *signature = strdup(methods[i].signature);
+        if (!name || !signature) {
+            free(name);
+            free(signature);
+            return JNI_ERR;
+        }
+        g_dynamic_natives.push_back(
+            {jclazz, name, signature, methods[i].fnPtr});
+    }
+    return JNI_OK;
 }
 
 ABI_ATTR static jint iface_UnregisterNatives(JNIEnv *env, jclass jclazz)
 {
-    WARN_STUB;
-    return 0;
+    (void)env;
+    for (auto it = g_dynamic_natives.begin(); it != g_dynamic_natives.end();) {
+        if (it->clazz == jclazz) {
+            free(it->name);
+            free(it->signature);
+            it = g_dynamic_natives.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    return JNI_OK;
 }
 
 ABI_ATTR static jint iface_MonitorEnter(JNIEnv *env, jobject jobj)
