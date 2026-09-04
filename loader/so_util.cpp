@@ -114,6 +114,8 @@ static fs::path get_arch_path()
     return "arm64-v8a";
 #elif defined(__arm__)
     return "armeabi-v7a";
+#elif defined(__i386__)
+    return "x86";
 #else
     #error Unknown arch, implement me.
 #endif
@@ -575,10 +577,40 @@ void so_relocate_rel(so_module *mod, const Rel *rel) {
 
   int type = ELF_R_TYPE(rel->r_info);
   switch (type) {
-    case R_AARCH64_RELATIVE:
-      *ptr = mod->base + addend;
+#if defined(__i386__)
+    case R_386_RELATIVE:
+      *ptr += mod->base;
       break;
 
+    case R_386_32:
+    case R_386_PC32:
+    case R_386_GLOB_DAT:
+    case R_386_JMP_SLOT:
+    {
+      uintptr_t link = 0;
+      if (sym->st_shndx != SHN_UNDEF)
+        link = mod->base + sym->st_value;
+      else
+        link = so_resolve_link(mod, mod->dynstr + sym->st_name);
+
+      if (!link && sym->st_shndx == SHN_UNDEF) {
+        if (type == R_386_JMP_SLOT)
+          *ptr = (uintptr_t)&plt0_stub;
+        warning("Missing: %s (%p, %p)\n",
+                mod->dynstr + sym->st_name, ptr, (void*)*ptr);
+        break;
+      }
+
+      if (type == R_386_32)
+        *ptr += link;
+      else if (type == R_386_PC32)
+        *ptr += link - (uintptr_t)ptr;
+      else
+        *ptr = link;
+      break;
+    }
+#else
+    case R_AARCH64_RELATIVE:
     case R_ARM_RELATIVE:
       *ptr += mod->base;
       break;
@@ -612,6 +644,7 @@ void so_relocate_rel(so_module *mod, const Rel *rel) {
       }
       break;
     }
+#endif
 
     default:
       fatal_error("Error unknown relocation type %d\n", type);
