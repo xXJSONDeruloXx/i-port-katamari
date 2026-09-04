@@ -76,7 +76,7 @@ OC_ARCH_FLAGS ?=
 OC_TAG        ?= armhf
 OC_TARGET     := build/open-citadel-$(OC_TAG)
 OC_OBJDIR     := build/open-citadel-obj-$(OC_TAG)
-OC_PKGS       := sdl2 zlib libzip
+OC_PKGS       := sdl2 zlib
 
 OC_SRCDIRS := src android loader thunks/libc thunks/khronos jni jni/classes \
               third_party/powervr open_citadel
