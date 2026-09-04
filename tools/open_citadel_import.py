@@ -22,6 +22,12 @@ VERSION_NAME = "1.07"
 OBB_NAME = f"main.{VERSION_CODE}.{PACKAGE}.obb"
 NATIVE_PATH = "lib/armeabi-v7a/libUnrealEngine3.so"
 NATIVE_SHA256 = "39f30710ea08c8f89db3e0a8a907813acbc4c1f9173255a8f458324b3d0454fa"
+X86_NATIVE_PATH = "lib/x86/libUnrealEngine3.so"
+X86_NATIVE_SHA256 = "11ea479b69160b8b3499aa7ce115e7fd6623932fe00c682530acaaae1869149a"
+NATIVE_LIBRARIES = {
+    NATIVE_PATH: NATIVE_SHA256,
+    X86_NATIVE_PATH: X86_NATIVE_SHA256,
+}
 OBB_MAGIC = b"UE3AndroidOBB|"
 OBB_PREAMBLE = b"\x01\x00\x00"
 
@@ -158,19 +164,28 @@ def find_xapk_members(z: zipfile.ZipFile):
 
 
 def extract_native_apk(apk: Path, out: Path) -> Path:
+    """Install both 32-bit guest ABIs shipped by the verified 1.07 donor.
+
+    ARMv7 is the PortMaster target; i386 is deliberately retained as a native
+    Linux bring-up target so JNI/filesystem/GLES bugs can be reproduced without
+    adding ARM emulation noise.
+    """
     with zipfile.ZipFile(apk) as z:
-        try:
-            info = z.getinfo(NATIVE_PATH)
-        except KeyError as e:
-            raise DonorError(f"APK missing {NATIVE_PATH}") from e
-        dst = out / NATIVE_PATH
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        with z.open(info) as src, dst.open("wb") as fp:
-            shutil.copyfileobj(src, fp, 1024 * 1024)
-        with dst.open("rb") as fp:
-            digest = sha256_stream(fp)
-        if digest != NATIVE_SHA256:
-            raise DonorError(f"unexpected libUnrealEngine3.so SHA-256: {digest}")
+        for member, expected_sha256 in NATIVE_LIBRARIES.items():
+            try:
+                info = z.getinfo(member)
+            except KeyError as e:
+                raise DonorError(f"APK missing {member}") from e
+            dst = out / member
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            with z.open(info) as src, dst.open("wb") as fp:
+                shutil.copyfileobj(src, fp, 1024 * 1024)
+            with dst.open("rb") as fp:
+                digest = sha256_stream(fp)
+            if digest != expected_sha256:
+                raise DonorError(
+                    f"unexpected {member} SHA-256: {digest}"
+                )
 
         for member in ("assets/UE3CommandLine.txt",):
             try:
@@ -181,7 +196,7 @@ def extract_native_apk(apk: Path, out: Path) -> Path:
             target.parent.mkdir(parents=True, exist_ok=True)
             with z.open(info) as src, target.open("wb") as fp:
                 shutil.copyfileobj(src, fp)
-    return dst
+    return out / NATIVE_PATH
 
 
 def import_xapk(xapk: Path, destination: Path) -> None:
@@ -226,6 +241,8 @@ def import_xapk(xapk: Path, destination: Path) -> None:
             "version_name": VERSION_NAME,
             "version_code": VERSION_CODE,
             "native_sha256": NATIVE_SHA256,
+            "x86_native_sha256": X86_NATIVE_SHA256,
+            "native_libraries": NATIVE_LIBRARIES,
             "obb": OBB_NAME,
             "obb_path": f"obb/{OBB_NAME}",
             "obb_entries": len(extracted),
