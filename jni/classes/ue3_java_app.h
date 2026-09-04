@@ -15,15 +15,15 @@ class UE3EGLConfigParms : public Object {
 public:
     static Class clazz;
 
-    jint redSize = 8;
-    jint greenSize = 8;
-    jint blueSize = 8;
-    jint alphaSize = 8;
-    jint depthSize = 24;
-    jint stencilSize = 8;
+    jint redSize = 5;
+    jint greenSize = 6;
+    jint blueSize = 5;
+    jint alphaSize = 0;
+    jint depthSize = 16;
+    jint stencilSize = 0;
     jint sampleBuffers = 0;
     jint sampleSamples = 0;
-    jint validConfig = 1;
+    jint validConfig = 0;
     jobject this0 = nullptr;
 
     Class *_getClass() override { return &clazz; }
