@@ -79,20 +79,31 @@ OC_OBJDIR     := build/open-citadel-obj-$(OC_TAG)
 OC_PKGS       := sdl2 zlib
 
 OC_SRCDIRS := src android loader thunks/libc thunks/khronos jni jni/classes \
-              third_party/powervr open_citadel
+              open_citadel
 OC_SRCS := $(foreach d,$(OC_SRCDIRS),$(wildcard $(d)/*.cpp))
 OC_SRCS := $(filter-out \
     src/main.cpp \
     src/symtab.cpp \
     src/crash.cpp \
+    src/gl_diag.cpp \
+    src/gl_probe.cpp \
+    src/sdl_info.cpp \
+    src/symtab_glprobe.cpp \
     src/symtab_setjmp.cpp \
     loader/io_util.cpp \
     android/cursor_draw.cpp \
     android/emulator_control.cpp \
     android/fb_probe.cpp \
     android/katamari_input.cpp \
-    jni/classes/katamari.cpp, \
+    jni/classes/katamari.cpp \
+    thunks/khronos/gles1.cpp, \
     $(OC_SRCS))
+
+# The bionic setjmp bridge is handwritten ARM assembly and is only required by
+# ARM guests. Epic Citadel's i386 donor does not import setjmp/longjmp.
+ifeq ($(OC_TAG),armhf)
+OC_SRCS += src/symtab_setjmp.cpp
+endif
 OC_OBJS := $(patsubst %.cpp,$(OC_OBJDIR)/%.cpp.o,$(OC_SRCS))
 OC_DEPS := $(OC_OBJS:.o=.d)
 
