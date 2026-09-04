@@ -611,6 +611,9 @@ void so_relocate_rel(so_module *mod, const Rel *rel) {
     }
 #else
     case R_AARCH64_RELATIVE:
+      *ptr = mod->base + addend;
+      break;
+
     case R_ARM_RELATIVE:
       *ptr += mod->base;
       break;
