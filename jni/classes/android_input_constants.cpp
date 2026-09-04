@@ -12,9 +12,9 @@
 
 namespace {
 
-#define STATIC_INT_FIELD(clazz, name, value) \
-    { .clazz=&clazz, .name=#name, .signature="I", \
-      .offset=(uintptr_t)(value), .is_static=1 }
+#define STATIC_INT_FIELD(classref, fieldname, fieldvalue) \
+    { .clazz=&classref, .name=#fieldname, .signature="I", \
+      .offset=(uintptr_t)(fieldvalue), .is_static=1 }
 
 struct MotionEventClass {
     static Class clazz;
