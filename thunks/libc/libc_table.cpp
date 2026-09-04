@@ -44,7 +44,18 @@ extern void *_Unwind_GetIP;
 extern void *_Unwind_GetRegionStart;
 extern void *_Unwind_Resume;
 extern void *__stack_chk_fail;
-extern void *__stack_chk_guard;
+/*
+ * Android exposes __stack_chk_guard as data in libc. Modern glibc keeps its
+ * canary in TLS and does not export a linkable __stack_chk_guard object,
+ * especially on i386. Give the guest its own process-local canary object.
+ * This is an ABI bridge, not the host compiler's stack protector.
+ */
+static uintptr_t bionic_stack_chk_guard =
+#if UINTPTR_MAX == UINT32_MAX
+    (uintptr_t)0x6f70656eu; /* "open" */
+#else
+    (uintptr_t)0x6f70656e63697461ull; /* "opencita" */
+#endif
 extern void __cxa_call_unexpected_impl(void*) {
     WARN_STUB
 };
@@ -82,7 +93,7 @@ DynLibFunction symtable_libc[] = {
     {"_stdout", (uintptr_t)&stdout_impl},
     {"_stderr", (uintptr_t)&stderr_impl},
     {"__stack_chk_fail", (uintptr_t)&__stack_chk_fail},
-    {"__stack_chk_guard", (uintptr_t)&__stack_chk_guard},
+    {"__stack_chk_guard", (uintptr_t)&bionic_stack_chk_guard},
     {"__cxa_call_unexpected", (uintptr_t)&__cxa_call_unexpected_impl},
     {"__cxa_atexit", (uintptr_t)&__cxa_atexit},
     {"__cxa_finalize", (uintptr_t)&__cxa_finalize},
