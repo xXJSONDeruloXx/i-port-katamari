@@ -66,3 +66,52 @@ jobs:
           make open-citadel-x86 OC_PKG_CONFIG=pkg-config
           file build/open-citadel-x86
           ldd build/open-citadel-x86
+      - name: Stage portable i386 runtime
+        run: |
+          set -eux
+          out=build/open-citadel-x86-bundle
+          mkdir -p "$out/lib" "$out/dri"
+          cp build/open-citadel-x86 "$out/"
+          cp -L /lib/ld-linux.so.2 "$out/ld-linux.so.2"
+
+          # SDL loads EGL/GLES and Mesa's DRI driver dynamically, so ldd on
+          # the executable alone is not enough. Seed those objects explicitly,
+          # then recursively collect every absolute dependency they report.
+          seeds="build/open-citadel-x86 /usr/lib/i386-linux-gnu/libEGL.so.1 /usr/lib/i386-linux-gnu/libGLESv2.so.2"
+          if [ -f /usr/lib/i386-linux-gnu/dri/swrast_dri.so ]; then
+            cp -L /usr/lib/i386-linux-gnu/dri/swrast_dri.so "$out/dri/"
+            seeds="$seeds /usr/lib/i386-linux-gnu/dri/swrast_dri.so"
+          fi
+
+          pending="$seeds"
+          seen=""
+          while [ -n "$pending" ]; do
+            next=""
+            for obj in $pending; do
+              case " $seen " in *" $obj "*) continue ;; esac
+              seen="$seen $obj"
+              [ -e "$obj" ] || continue
+              case "$obj" in
+                /usr/lib/i386-linux-gnu/dri/*)
+                  ;;
+                /usr/lib/i386-linux-gnu/*|/lib/i386-linux-gnu/*|/lib32/*)
+                  cp -Lf "$obj" "$out/lib/$(basename "$obj")"
+                  ;;
+              esac
+              for dep in $(ldd "$obj" 2>/dev/null | awk '/=> \/|^\// {for(i=1;i<=NF;i++) if($i ~ /^\//) print $i}'); do
+                case " $seen " in *" $dep "*) ;; *) next="$next $dep" ;; esac
+              done
+            done
+            pending="$next"
+          done
+
+          cp -L /usr/lib/i386-linux-gnu/libEGL.so.1 "$out/lib/"
+          cp -L /usr/lib/i386-linux-gnu/libGLESv2.so.2 "$out/lib/"
+          file "$out/open-citadel-x86" "$out/ld-linux.so.2"
+          du -sh "$out"
+      - name: Upload portable i386 host
+        uses: actions/upload-artifact@v4
+        with:
+          name: open-citadel-x86-${{ github.sha }}
+          path: build/open-citadel-x86-bundle
+          retention-days: 7
