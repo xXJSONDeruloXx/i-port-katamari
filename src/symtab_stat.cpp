@@ -58,11 +58,27 @@ struct bionic_stat {
     uint64_t st_ino;
 };
 
+/*
+ * Android used the same field list for 32-bit ARM and i386, but the ABI
+ * alignment of 64-bit integers differs. ARM EABI aligns them to 8 bytes;
+ * i386 aligns them to 4. Compile this structure in the same architecture as
+ * the guest and assert the resulting ABI instead of forcing the ARM offsets.
+ *
+ * The bionic sys/stat.h definition groups __arm__ and __i386__ together; the
+ * different sizes below are therefore an ABI consequence, not two different
+ * source structures.
+ */
+#if defined(__i386__)
+static_assert(sizeof(struct bionic_stat) == 96,
+              "Android i386 bionic struct stat/stat64 must be 96 bytes");
+static_assert(offsetof(struct bionic_stat, st_size) == 44,
+              "Android i386 st_size must be at offset 44");
+#elif defined(__arm__)
 static_assert(sizeof(struct bionic_stat) == 104,
-              "bionic's struct stat is 104 bytes on armeabi-v7a; "
-              "the game writes into a frame that size");
+              "bionic's struct stat is 104 bytes on armeabi-v7a");
 static_assert(offsetof(struct bionic_stat, st_size) == 48,
-              "st_size at 48 is what the game's generated code indexes");
+              "armeabi-v7a st_size must be at offset 48");
+#endif
 
 static int convert(const struct stat64 &host, struct bionic_stat *out);
 
