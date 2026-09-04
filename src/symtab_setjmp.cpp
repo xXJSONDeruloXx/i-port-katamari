@@ -113,7 +113,7 @@ void bionic_longjmp(void *env, int value);
  * sp because putting sp in an stm register list is deprecated from ARMv7 on
  * and assembles to a warning on this toolchain.
  */
-asm(
+#if defined(__arm__)\n\nasm(
     ".text\n"
     ".align  2\n"
     ".arm\n"
@@ -149,3 +149,15 @@ DynLibFunction symtable_setjmp[] = {
     NO_THUNK("longjmp", (uintptr_t)&bionic_longjmp),
     { NULL, 0 },
 };
+
+#else
+
+/* Epic Citadel's i386 build does not import setjmp/longjmp. Keep an empty
+ * table so the shared loader profile links without assembling ARM code. If a
+ * future Android/x86 donor needs these, it requires a bionic-x86 jmp_buf
+ * bridge rather than blindly using glibc's larger representation. */
+DynLibFunction symtable_setjmp[] = {
+    { NULL, 0 },
+};
+
+#endif /* __arm__ */
