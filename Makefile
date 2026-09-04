@@ -84,6 +84,7 @@ OC_SRCS := $(foreach d,$(OC_SRCDIRS),$(wildcard $(d)/*.cpp))
 OC_SRCS := $(filter-out \
     src/main.cpp \
     src/symtab.cpp \
+    src/crash.cpp \
     loader/io_util.cpp \
     android/cursor_draw.cpp \
     android/emulator_control.cpp \
@@ -96,11 +97,11 @@ OC_DEPS := $(OC_OBJS:.o=.d)
 
 OC_INCLUDES := -I. -Isrc -Iandroid -Iloader -Ithunks -Ithunks/libc \
                -Ithunks/libc/generated -Ijni -Iopen_citadel
-OC_CPPFLAGS := $(OC_INCLUDES) $(shell $(OC_PKG_CONFIG) --cflags $(OC_PKGS)) -MMD -MP
+OC_CPPFLAGS = $(OC_INCLUDES) $(shell $(OC_PKG_CONFIG) --cflags $(OC_PKGS)) -MMD -MP
 OC_CXXFLAGS := -std=gnu++20 $(OPT) $(WARN) -fno-strict-aliasing -fuse-cxa-atexit \
                $(OC_ARCH_FLAGS)
 OC_LDFLAGS  := $(OPT) $(OC_ARCH_FLAGS)
-OC_LDLIBS   := $(shell $(OC_PKG_CONFIG) --libs $(OC_PKGS)) -pthread -lm -ldl -lrt -lbsd
+OC_LDLIBS   = $(shell $(OC_PKG_CONFIG) --libs $(OC_PKGS)) -pthread -lm -ldl -lrt -lbsd
 
 open-citadel: $(OC_TARGET)
 
