@@ -220,10 +220,33 @@ static void cb_set_local_value(JNIEnv *, jobject, jstring key, jstring value)
     g_prefs[str_value(key)] = str_value(value);
 }
 
-static void egl_config_ctor(JNIEnv *, jobject obj, jclass)
+static void egl_config_ctor(JNIEnv *, jobject obj, jclass, jobject outer)
 {
-    if (obj)
-        new (obj) UE3EGLConfigParms();
+    if (!obj)
+        return;
+    auto *cfg = new (obj) UE3EGLConfigParms();
+    cfg->this0 = outer;
+}
+
+static void egl_config_copy_ctor(JNIEnv *, jobject obj, jclass, jobject outer,
+                                 jobject source)
+{
+    if (!obj)
+        return;
+    auto *cfg = new (obj) UE3EGLConfigParms();
+    cfg->this0 = outer;
+    auto *src = reinterpret_cast<UE3EGLConfigParms *>(source);
+    if (!src)
+        return;
+    cfg->redSize = src->redSize;
+    cfg->greenSize = src->greenSize;
+    cfg->blueSize = src->blueSize;
+    cfg->alphaSize = src->alphaSize;
+    cfg->depthSize = src->depthSize;
+    cfg->stencilSize = src->stencilSize;
+    cfg->sampleBuffers = src->sampleBuffers;
+    cfg->sampleSamples = src->sampleSamples;
+    cfg->validConfig = src->validConfig;
 }
 
 static const ManagedMethod UE3JavaMethods[] = {
@@ -344,7 +367,12 @@ static const ManagedMethod UE3JavaMethods[] = {
 
 static const ManagedMethod EGLConfigMethods[] = {
     ManagedMethod::RegisterNonVirtual<&egl_config_ctor>(
-        UE3EGLConfigParms::clazz, "<init>", "()V"),
+        UE3EGLConfigParms::clazz, "<init>",
+        "(Lcom/epicgames/EpicCitadel/UE3JavaApp;)V"),
+    ManagedMethod::RegisterNonVirtual<&egl_config_copy_ctor>(
+        UE3EGLConfigParms::clazz, "<init>",
+        "(Lcom/epicgames/EpicCitadel/UE3JavaApp;"
+        "Lcom/epicgames/EpicCitadel/UE3JavaApp$EGLConfigParms;)V"),
     {nullptr},
 };
 
