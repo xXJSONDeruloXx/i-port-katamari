@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
+#include <wchar.h>
 
 #include "so_util.h"
 #include "thunk_gen.h"
@@ -30,6 +31,7 @@
 namespace HOST_MATH {
 extern "C" {
 double acos(double);
+double asin(double);
 double atan(double);
 double atan2(double, double);
 double ceil(double);
@@ -37,6 +39,7 @@ double cos(double);
 double exp(double);
 double floor(double);
 double fmod(double, double);
+double frexp(double, int *);
 double log(double);
 double log10(double);
 double modf(double, double *);
@@ -48,6 +51,7 @@ double tan(double);
 
 float acosf(float);
 float asinf(float);
+float atanf(float);
 float atan2f(float, float);
 float ceilf(float);
 float cosf(float);
@@ -59,6 +63,7 @@ float log10f(float);
 float logf(float);
 float powf(float, float);
 float rintf(float);
+float roundf(float);
 float sinf(float);
 float sqrtf(float);
 float tanf(float);
@@ -94,6 +99,16 @@ extern "C" int katamari_ioctl(int fd, int request, ...)
     return ioctl(fd, (unsigned long)request, arg);
 }
 
+extern "C" int katamari_swscanf(const wchar_t *input,
+                                  const wchar_t *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    const int rc = vswscanf(input, format, ap);
+    va_end(ap);
+    return rc;
+}
+
 /*
  * __assert2 is what bionic's assert() expands to, and it has no counterpart in
  * glibc: glibc's __assert_fail takes (expr, file, line, func) while bionic's
@@ -119,6 +134,7 @@ extern "C" void katamari_assert2(const char *file, int line,
 
 DynLibFunction symtable_libm[] = {
     THUNK_SPECIFIC("acos",   HOST_MATH::acos),
+    THUNK_SPECIFIC("asin",   HOST_MATH::asin),
     THUNK_SPECIFIC("atan",   HOST_MATH::atan),
     THUNK_SPECIFIC("atan2",  HOST_MATH::atan2),
     THUNK_SPECIFIC("ceil",   HOST_MATH::ceil),
@@ -126,6 +142,7 @@ DynLibFunction symtable_libm[] = {
     THUNK_SPECIFIC("exp",    HOST_MATH::exp),
     THUNK_SPECIFIC("floor",  HOST_MATH::floor),
     THUNK_SPECIFIC("fmod",   HOST_MATH::fmod),
+    THUNK_SPECIFIC("frexp",  HOST_MATH::frexp),
     THUNK_SPECIFIC("log",    HOST_MATH::log),
     THUNK_SPECIFIC("log10",  HOST_MATH::log10),
     /* modf writes its integral part through a double* - the pointer crosses
@@ -139,6 +156,7 @@ DynLibFunction symtable_libm[] = {
 
     THUNK_SPECIFIC("acosf",  HOST_MATH::acosf),
     THUNK_SPECIFIC("asinf",  HOST_MATH::asinf),
+    THUNK_SPECIFIC("atanf",  HOST_MATH::atanf),
     THUNK_SPECIFIC("atan2f", HOST_MATH::atan2f),
     THUNK_SPECIFIC("ceilf",  HOST_MATH::ceilf),
     THUNK_SPECIFIC("cosf",   HOST_MATH::cosf),
@@ -150,12 +168,14 @@ DynLibFunction symtable_libm[] = {
     THUNK_SPECIFIC("logf",   HOST_MATH::logf),
     THUNK_SPECIFIC("powf",   HOST_MATH::powf),
     THUNK_SPECIFIC("rintf",  HOST_MATH::rintf),
+    THUNK_SPECIFIC("roundf", HOST_MATH::roundf),
     THUNK_SPECIFIC("sinf",   HOST_MATH::sinf),
     THUNK_SPECIFIC("sqrtf",  HOST_MATH::sqrtf),
     THUNK_SPECIFIC("tanf",   HOST_MATH::tanf),
 
     NO_THUNK("open",  (uintptr_t)&katamari_open),
     NO_THUNK("ioctl", (uintptr_t)&katamari_ioctl),
+    NO_THUNK("swscanf", (uintptr_t)&katamari_swscanf),
     /* No float crosses the boundary, so no ABI bridge is needed. */
     NO_THUNK("__assert2", (uintptr_t)&katamari_assert2),
 
