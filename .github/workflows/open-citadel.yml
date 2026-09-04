@@ -1,0 +1,63 @@
+name: Open Citadel
+
+on:
+  push:
+    branches:
+      - feat/open-citadel
+  pull_request:
+    paths:
+      - "OPEN_CITADEL.md"
+      - "tools/open_citadel_import.py"
+      - "tests/test_open_citadel_import.py"
+      - "open_citadel/**"
+      - "loader/**"
+      - "jni/**"
+      - "src/**"
+      - "thunks/**"
+      - ".github/workflows/open-citadel.yml"
+
+jobs:
+  donor-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python unit tests
+        run: python3 -m unittest -v tests/test_open_citadel_import.py
+      - name: Syntax check
+        run: python3 -m py_compile tools/open_citadel_import.py tests/test_open_citadel_import.py
+
+  atc-decoder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ATC decoder regression test
+        run: |
+          g++ -std=c++20 -O2 -Wall -Wextra -Isrc             tools/atc_color_test.cpp src/atc_decompress.cpp             -o /tmp/atc_color_test
+      - name: Run ATC decoder regression test
+        run: /tmp/atc_color_test
+
+  x86-prereqs:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable i386
+        run: sudo dpkg --add-architecture i386
+      - name: Install 32-bit build/runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y             g++-multilib libc6-dev-i386             libsdl2-dev:i386 libgl-dev:i386 libegl-dev:i386 libgles2-mesa-dev:i386             zlib1g-dev:i386 libbsd-dev:i386 libzip-dev:i386
+      - name: Verify 32-bit toolchain
+        run: |
+          cat > /tmp/probe.cpp <<'EOF'
+          #include <SDL2/SDL.h>
+          #include <stdio.h>
+          int main() {
+              SDL_version v;
+              SDL_GetVersion(&v);
+              printf("SDL %u.%u.%u\n", v.major, v.minor, v.patch);
+              return 0;
+          }
+          EOF
+          g++ -m32 /tmp/probe.cpp $(pkg-config --cflags --libs sdl2) -o /tmp/probe32
+          file /tmp/probe32
+          /tmp/probe32
