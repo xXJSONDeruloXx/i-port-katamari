@@ -21,12 +21,12 @@
 
 #include "fb_probe.h"
 
-extern "C" void android_cursor_draw(int fb_width, int fb_height);
+extern "C" void android_cursor_draw(int fb_width, int fb_height)
+    __attribute__((weak));
+extern "C" void android_fb_probe(long frame, int width, int height)
+    __attribute__((weak));
 #include "so_util.h"
 #include "trace.h"
-
-extern DynLibFunction symtable_gles2[];
-extern DynLibFunction symtable_glprobe[];
 
 extern "C" {
 
@@ -301,11 +301,12 @@ EGLBoolean eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
      */
     int w = 0, h = 0;
     SDL_GL_GetDrawableSize(g_window, &w, &h);
-    android_fb_probe(g_frames.load(std::memory_order_relaxed) + 1, w, h);
+    if (android_fb_probe)
+        android_fb_probe(g_frames.load(std::memory_order_relaxed) + 1, w, h);
 
-    /* The pointer the port synthesises for the menus has to be visible, and
-     * this is the last moment the game's frame still exists. */
-    android_cursor_draw(w, h);
+    /* Katamari supplies an optional host cursor; other loader profiles do not. */
+    if (android_cursor_draw)
+        android_cursor_draw(w, h);
 
     SDL_GL_SwapWindow(g_window);
     /* Counted after the swap, not before: a frame the driver refused to present
@@ -332,17 +333,14 @@ __eglMustCastToProperFunctionPointerType eglGetProcAddress(const char *procname)
 {
     if (!procname)
         return NULL;
-    /* The probes shadow two entries of symtable_gles2; resolving them here
-     * first keeps a runtime lookup from bypassing the instrumentation. */
-    for (int i = 0; symtable_glprobe[i].symbol; i++) {
-        if (strcmp(symtable_glprobe[i].symbol, procname) == 0)
-            return (__eglMustCastToProperFunctionPointerType)symtable_glprobe[i].func;
-    }
-    for (int i = 0; symtable_gles2[i].symbol; i++) {
-        if (strcmp(symtable_gles2[i].symbol, procname) == 0)
-            return (__eglMustCastToProperFunctionPointerType)symtable_gles2[i].func;
-    }
-    return NULL;
+    /*
+     * Resolve through the active game profile instead of hard-coding a GL
+     * table. Katamari's profile orders probes -> GLES1 -> GLES2; Open Citadel's
+     * starts with GLES2. The same egl shim therefore returns an ABI-safe thunk
+     * for whichever renderer the mapped game actually selected.
+     */
+    uintptr_t resolved = so_resolve_link(NULL, procname);
+    return (__eglMustCastToProperFunctionPointerType)resolved;
 }
 
 } /* extern "C" */
