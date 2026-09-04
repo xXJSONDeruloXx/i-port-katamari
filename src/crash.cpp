@@ -14,6 +14,9 @@
  * locks. After reporting it restores the default action and re-raises, so the
  * process still dies exactly as it would have.
  */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include "crash.h"
 
 #include <fcntl.h>
@@ -275,8 +278,39 @@ static void on_fault(int sig, siginfo_t *si, void *ucontext)
     put_hex((uintptr_t)(si ? si->si_addr : 0));
     put("\n");
 
+    uintptr_t fault_sp = 0;
     if (uc) {
         const mcontext_t *m = &uc->uc_mcontext;
+#if defined(__i386__)
+        const uintptr_t pc  = (uintptr_t)m->gregs[REG_EIP];
+        const uintptr_t sp  = (uintptr_t)m->gregs[REG_ESP];
+        const uintptr_t eax = (uintptr_t)m->gregs[REG_EAX];
+        const uintptr_t ebx = (uintptr_t)m->gregs[REG_EBX];
+        const uintptr_t ecx = (uintptr_t)m->gregs[REG_ECX];
+        const uintptr_t edx = (uintptr_t)m->gregs[REG_EDX];
+        const uintptr_t esi = (uintptr_t)m->gregs[REG_ESI];
+        const uintptr_t edi = (uintptr_t)m->gregs[REG_EDI];
+        const uintptr_t ebp = (uintptr_t)m->gregs[REG_EBP];
+
+        put_reg("eip", pc);
+        put_reg("esp", sp);
+        put_reg("ebp", ebp);
+        put_reg("eax", eax);
+        put_reg("ebx", ebx);
+        put_reg("ecx", ecx);
+        put_reg("edx", edx);
+        put_reg("esi", esi);
+        put_reg("edi", edi);
+
+        put_words("eax", eax);
+        put_words("ebx", ebx);
+        put_words("ecx", ecx);
+        put_words("edx", edx);
+        put_words("esi", esi);
+        put_words("edi", edi);
+        put_words("esp", sp);
+        fault_sp = sp;
+#else
         put_reg("pc", m->arm_pc);
         put_reg("lr", m->arm_lr);
         put_reg("sp", m->arm_sp);
@@ -293,14 +327,16 @@ static void on_fault(int sig, siginfo_t *si, void *ucontext)
         put_words("r3", m->arm_r3);
         put_words("ip", m->arm_ip);
         put_words("sp", m->arm_sp);
+        fault_sp = m->arm_sp;
+#endif
     }
 
     put("       module text at ");
     put_hex(g_text_base);
     put("\n");
 
-    if (uc)
-        put_stack(uc->uc_mcontext.arm_sp);
+    if (fault_sp)
+        put_stack(fault_sp);
 
     /* Die the way we would have died without this handler. */
     struct sigaction dfl;
