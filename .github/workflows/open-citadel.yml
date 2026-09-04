@@ -1,5 +1,9 @@
 name: Open Citadel
 
+concurrency:
+  group: open-citadel-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -66,6 +70,15 @@ jobs:
           make open-citadel-x86 OC_PKG_CONFIG=pkg-config
           file build/open-citadel-x86
           ldd build/open-citadel-x86
+      - name: Smoke-test i386 executable
+        run: |
+          set +e
+          output=$(build/open-citadel-x86 2>&1)
+          rc=$?
+          set -e
+          echo "$output"
+          test "$rc" -eq 2
+          grep -F "usage:" <<<"$output"
       - name: Stage portable i386 runtime
         run: |
           set -eux
