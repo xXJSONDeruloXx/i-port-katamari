@@ -8,6 +8,7 @@
 #include <SDL2/SDL.h>
 
 #include "io_util.h"
+#include "fix_path.h"
 #include "so_util.h"
 #include "khronos/gles2.h"
 #include "jni.h"
