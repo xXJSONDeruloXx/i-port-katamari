@@ -6,6 +6,9 @@
 #include <iterator>
 #include <algorithm>
 #include <vector>
+#include <mutex>
+#include <new>
+#include <unordered_map>
 
 #include "platform.h"
 #include "jni.h"
@@ -37,6 +40,22 @@ extern "C" void *jni_find_registered_native(jclass clazz, const char *name,
     }
     return NULL;
 }
+
+
+namespace {
+std::mutex g_allocated_object_lock;
+std::unordered_map<const Object *, Class *> g_allocated_object_classes;
+
+class AllocatedObject : public Object {
+public:
+    Class *_getClass() override
+    {
+        std::lock_guard<std::mutex> lock(g_allocated_object_lock);
+        auto it = g_allocated_object_classes.find(this);
+        return it == g_allocated_object_classes.end() ? nullptr : it->second;
+    }
+};
+} // namespace
 
 template <typename T> ABI_ATTR static T iface_CallNonVirtualMethodV(JNIEnv *env, jobject obj, jclass jclazz, jmethodID meth, va_list va);
 template <typename T> ABI_ATTR static T iface_CallNonVirtualMethodA(JNIEnv *env, jobject obj, jclass jclazz, jmethodID meth, const jvalue *val);
@@ -225,8 +244,26 @@ ABI_ATTR static jboolean iface_IsSameObject(JNIEnv *env, jobject jref1, jobject 
 
 ABI_ATTR static jobject iface_AllocObject(JNIEnv *env, jclass jclazz)
 {
-    WARN_STUB;
-    return NULL;
+    (void)env;
+    Class *clazz = reinterpret_cast<Class *>(jclazz);
+    if (!clazz || clazz->instance_size < (jsize)sizeof(AllocatedObject))
+        return NULL;
+
+    /*
+     * JNI AllocObject creates an instance without invoking <init>.  Fake Java
+     * objects use one C++ vptr at offset zero and all declared fields follow
+     * it, so constructing this field-less proxy preserves the exact offsets of
+     * the requested fake class while supplying a working _getClass().
+     */
+    void *memory = calloc(1, (size_t)clazz->instance_size);
+    if (!memory)
+        return NULL;
+    auto *object = new (memory) AllocatedObject();
+    {
+        std::lock_guard<std::mutex> lock(g_allocated_object_lock);
+        g_allocated_object_classes[object] = clazz;
+    }
+    return reinterpret_cast<jobject>(object);
 }
 
 ABI_ATTR static jobject iface_NewObject(JNIEnv *env, jclass jclazz, jmethodID methodID, ...)
